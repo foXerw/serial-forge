@@ -10,6 +10,7 @@ public partial class ConnectionViewModel : ViewModelBase
 {
     private readonly Func<SerialTransportOptions, ITransport> _factory;
     private ITransport? _transport;
+    private RelayCommand? _disconnectCommand;
 
     public string[] PortNames { get; } = SerialPort.GetPortNames().DefaultIfEmpty("COM1").ToArray();
     public int[] BaudRates { get; } = new[] { 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600 };
@@ -29,8 +30,11 @@ public partial class ConnectionViewModel : ViewModelBase
     {
         _factory = factory;
         Connect = new RelayCommand(() => DoConnect());
-        Disconnect = new RelayCommand(() => DoDisconnect(), () => IsConnected);
+        _disconnectCommand = new RelayCommand(() => DoDisconnect(), () => IsConnected);
+        Disconnect = _disconnectCommand;
     }
+
+    partial void OnIsConnectedChanged(bool value) => _disconnectCommand?.NotifyCanExecuteChanged();
 
     private void DoConnect()
     {
