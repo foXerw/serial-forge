@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SerialForge.Core\SerialForge.Core.csproj" />
     <ProjectReference Include="..\SerialForge.Transport\SerialForge.Transport.csproj" />
+    <ProjectReference Include="..\SerialForge.App\SerialForge.App.csproj" />
   </ItemGroup>
 
   <ItemGroup>
