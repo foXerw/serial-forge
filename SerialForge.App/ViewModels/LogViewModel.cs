@@ -21,6 +21,16 @@ public partial class LogViewModel : ViewModelBase
 
     public void AddTx(byte[] frame) => Append("TX", frame, detail: null, error: false);
 
+    // TX with field breakdown for display (acceptance #3). Mirrors AddRx's
+    // formatting so RX/TX share one rendering rule.
+    public void AddTx(byte[] frame, DecodedFrame decoded)
+    {
+        var detail = !string.IsNullOrEmpty(decoded.Error)
+            ? "ERROR: " + decoded.Error
+            : string.Join(" | ", decoded.Fields.Select(f => $"{f.Name}={f.Value}"));
+        Append("TX", frame, detail, !string.IsNullOrEmpty(decoded.Error));
+    }
+
     public void AddRx(DecodedFrame decoded)
     {
         var detail = !string.IsNullOrEmpty(decoded.Error)

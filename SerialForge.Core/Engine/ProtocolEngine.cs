@@ -123,7 +123,7 @@ public sealed class ProtocolEngine
             }
             var range = ms.ToArray();
             var computed = _algos.Get("length").Compute(range, spec.Compute!);
-            seg.bytes = ApplyByteOrder(computed, spec.ByteOrder ?? _def.DefaultByteOrder, bigEndianCanonical: true);
+            seg.bytes = ApplyByteOrder(computed, spec.ByteOrder ?? _def.DefaultByteOrder);
             segments[i] = seg;
         }
     }
@@ -165,7 +165,7 @@ public sealed class ProtocolEngine
             int rangeLen = toEnd - fromOff;
             var range = new ArraySegment<byte>(buffer, fromOff, rangeLen).ToArray();
             var computed = _algos.Get(spec.Compute!.Algo).Compute(range, spec.Compute!);
-            seg.bytes = ApplyByteOrder(computed, spec.ByteOrder ?? _def.DefaultByteOrder, bigEndianCanonical: true);
+            seg.bytes = ApplyByteOrder(computed, spec.ByteOrder ?? _def.DefaultByteOrder);
             segments[i] = seg;
         }
     }
@@ -181,7 +181,7 @@ public sealed class ProtocolEngine
         return ms.ToArray();
     }
 
-    private static byte[] ApplyByteOrder(byte[] canonicalBigEndian, ByteOrder order, bool bigEndianCanonical)
+    private static byte[] ApplyByteOrder(byte[] canonicalBigEndian, ByteOrder order)
     {
         if (order == ByteOrder.Big) return canonicalBigEndian;
         var copy = canonicalBigEndian.ToArray();

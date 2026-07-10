@@ -40,13 +40,25 @@ public partial class ConnectionViewModel : ViewModelBase
     {
         _transport?.Dispose();
         _transport = _factory(new SerialTransportOptions(PortName, BaudRate));
-        try { _transport.Open(); Status = "Connected"; IsConnected = true; }
+        try
+        {
+            _transport.Open();
+            Status = "Connected";
+            IsConnected = true;
+            // The live transport changed: notify so MainViewModel re-subscribes
+            // BytesReceived on the new instance. IsConnected alone is not enough
+            // (reconnecting while already connected never toggles IsConnected).
+            OnPropertyChanged(nameof(Transport));
+        }
         catch (Exception ex) { Status = "Error: " + ex.Message; }
     }
 
     private void DoDisconnect()
     {
-        _transport?.Close();
-        Status = "Disconnected"; IsConnected = false;
+        _transport?.Dispose();   // release the COM port
+        _transport = null;
+        Status = "Disconnected";
+        IsConnected = false;
+        OnPropertyChanged(nameof(Transport));
     }
 }

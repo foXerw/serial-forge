@@ -21,6 +21,15 @@ public static class ProtocolLoader
         try { dto = JsonSerializer.Deserialize<Dto.ProtocolDto>(json, Opt) ?? throw new ProtocolException("empty protocol"); }
         catch (JsonException ex) { throw new ProtocolException("invalid JSON: " + ex.Message, ex); }
 
+        // Guard each top-level section: previously the null-forgiving derefs below
+        // threw a raw NullReferenceException when a section was missing. Surface a
+        // clear ProtocolException naming the missing section instead.
+        if (string.IsNullOrWhiteSpace(dto.Name)) throw new ProtocolException("missing 'name' in protocol");
+        if (string.IsNullOrWhiteSpace(dto.Version)) throw new ProtocolException("missing 'version' in protocol");
+        if (dto.Framing is null) throw new ProtocolException("missing 'framing' in protocol");
+        if (dto.Layout is null || dto.Layout.Length == 0) throw new ProtocolException("missing 'layout' in protocol");
+        if (dto.Commands is null) throw new ProtocolException("missing 'commands' in protocol");
+
         var order = dto.DefaultByteOrder == "big" ? ByteOrder.Big : ByteOrder.Little;
         var framing = new FramingRule(
             ParseEnum<FramingMode>(dto.Framing!.Mode),

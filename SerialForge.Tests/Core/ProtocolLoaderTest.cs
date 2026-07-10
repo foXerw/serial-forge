@@ -32,4 +32,22 @@ public class ProtocolLoaderTest
         var bad = Fixture.Replace("\"to\": \"payload\"", "\"to\": \"ghost\"");
         Assert.Throws<ProtocolException>(() => ProtocolLoader.Load(bad));
     }
+
+    [Fact]
+    public void Rejects_missing_layout_with_protocol_exception()
+    {
+        // Valid protocol JSON but with the "layout" section omitted entirely:
+        // must surface a clear ProtocolException (not a raw NullReferenceException).
+        var json = """
+        {
+            "name": "demo-mcu",
+            "version": "1.0.0",
+            "defaultByteOrder": "little",
+            "framing": { "mode": "length-prefix", "preamble": ["AA 55"], "lengthField": "len" },
+            "commands": []
+        }
+        """;
+        var ex = Assert.Throws<ProtocolException>(() => ProtocolLoader.Load(json));
+        Assert.Contains("layout", ex.Message);
+    }
 }

@@ -53,6 +53,10 @@ public sealed class SerialTransport : ITransport
     public void Close()
     {
         _cts?.Cancel();
+        // Wait for the read thread to observe cancellation and exit before
+        // closing/disposing the port — otherwise the new SerialPort created on a
+        // reconnect can race the still-running reader on the same COM port.
+        _readThread?.Join(1000);
         _port?.Close();
     }
 

@@ -4,6 +4,15 @@
     <DockPanel Margin="4">
         <TextBlock DockPanel.Dock="Top" Text="RX/TX Log" FontWeight="Bold" Margin="2"/>
         <ListView ItemsSource="{Binding Entries}" FontFamily="Consolas">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsError}" Value="True">
+                            <Setter Property="Foreground" Value="#C00"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ListView.ItemContainerStyle>
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="Dir" Width="40" DisplayMemberBinding="{Binding Direction}"/>
