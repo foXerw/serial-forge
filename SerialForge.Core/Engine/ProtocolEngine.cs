@@ -187,6 +187,162 @@ public sealed class ProtocolEngine
         return copy;
     }
 
-    // Decode implemented in Task 8.
-    public DecodedFrame Decode(byte[] frame) => throw new NotImplementedException();
+    // Decode walks the layout to size each field, decodes values, and verifies
+    // computed fields (length/checksum). It NEVER throws on bad device data:
+    // truncated/exception paths set DecodedFrame.Error; a bad computed field sets
+    // DecodedFrame.Error and marks that field IsError while still returning the
+    // partially-decoded fields.
+    public DecodedFrame Decode(byte[] frame)
+    {
+        try
+        {
+            var fields = new List<DecodedField>();
+            int offset = 0;
+            var resolvedSizes = new Dictionary<string, int>();
+            // First pass: walk fixed/literal/length fields to learn each size.
+            foreach (var f in _def.Layout)
+            {
+                int size = SizeFor(f, frame, offset, resolvedSizes);
+                resolvedSizes[f.Name] = size;
+                offset += size;
+                // Detect truncation as soon as accumulated sizes outrun the frame
+                // so a short buffer is reported cleanly rather than throwing later
+                // inside SizeFor/ReadUInt when it dereferences beyond frame.Length.
+                if (offset > frame.Length)
+                    return new DecodedFrame(Array.Empty<DecodedField>(), frame,
+                        $"truncated frame: need {offset} bytes, have {frame.Length}");
+            }
+
+            // Second pass: decode values + verify computed fields.
+            offset = 0;
+            foreach (var f in _def.Layout)
+            {
+                int size = resolvedSizes[f.Name];
+                var order = f.ByteOrder ?? _def.DefaultByteOrder;
+
+                if (f.Kind == FieldKind.Literal)
+                {
+                    fields.Add(new DecodedField(f.Name, ToHexDisplay(LiteralBytes(f)), offset, size, false));
+                }
+                else if (f.Kind == FieldKind.Computed)
+                {
+                    var (ok, actual, expected) = VerifyComputed(f, frame, offset, size, resolvedSizes);
+                    fields.Add(new DecodedField(f.Name, ToHexDisplay(actual), offset, size, !ok));
+                    if (!ok)
+                        return new DecodedFrame(fields.ToArray(), frame,
+                            $"checksum mismatch on '{f.Name}': got {ToHexDisplay(actual)} expected {ToHexDisplay(expected)}");
+                }
+                else // Value
+                {
+                    var codec = f.Codec == CodecType.Enum ? new EnumCodec(CodecType.U8, f.EnumMap) : _codecs.Get(f.Codec);
+                    var (val, _) = codec.Decode(frame, offset, size, order);
+                    fields.Add(new DecodedField(f.Name, val, offset, size, false));
+                }
+                offset += size;
+            }
+            return new DecodedFrame(fields.ToArray(), frame, null);
+        }
+        catch (Exception ex)
+        {
+            // Decode must never throw into the reader thread.
+            return new DecodedFrame(Array.Empty<DecodedField>(), frame, ex.Message);
+        }
+    }
+
+    // Resolve the byte size of a single field. Priority:
+    //   1. Literal              -> its literal bytes length
+    //   2. fixed-size codec     -> codec.FixedSize  (covers Computed fields like
+    //                              len/crc16 AND numeric Value fields like cmd)
+    //   3. Size-declared field  -> f.Size (bytes/string with explicit size)
+    //   4. variable Value field -> derived from the length field that counts it
+    //   5. sink                 -> remaining bytes in the frame
+    // Branch 2 is load-bearing: without it, Computed fields (len, crc16 are both
+    // u16) fall through to the sink path and get mis-sized, breaking the round trip.
+    private int SizeFor(FieldDef f, byte[] frame, int offset, Dictionary<string, int> resolved)
+    {
+        if (f.Kind == FieldKind.Literal) return LiteralBytes(f).Length;
+        var codec = _codecs.Get(f.Codec == CodecType.Enum ? CodecType.U8 : f.Codec);
+        if (codec.FixedSize is int fs) return fs;   // Computed + numeric Value
+        if (f.Size is int s) return s;              // Size-declared bytes/string
+
+        // Variable bytes/payload: derive from the length field that counts it.
+        var lengthField = _def.Layout.FirstOrDefault(o => o.Kind == FieldKind.Computed && o.Compute?.Algo == "length"
+            && o.Compute.Counts is not null && o.Compute.Counts.Contains(f.Name));
+        if (lengthField is not null)
+        {
+            int lenFieldOff = SumSizesBefore(lengthField.Name, resolved);
+            int lenSize = resolved[lengthField.Name];
+            long lenVal = ReadUInt(frame, lenFieldOff, lenSize, lengthField.ByteOrder ?? _def.DefaultByteOrder);
+            long sumOthers = (lengthField.Compute!.Counts ?? Array.Empty<string>())
+                .Where(n => n != f.Name).Sum(n => resolved[n]);
+            return (int)(lenVal - sumOthers - lengthField.Compute.Offset);
+        }
+        // sink: remaining bytes
+        int consumed = resolved.Values.Sum();
+        return frame.Length - consumed;
+    }
+
+    private static long ReadUInt(byte[] frame, int off, int size, ByteOrder order)
+    {
+        long v = 0;
+        for (int i = 0; i < size; i++)
+        {
+            int bi = order == ByteOrder.Little ? off + i : off + size - 1 - i;
+            v |= ((long)frame[bi]) << (8 * i);
+        }
+        return v;
+    }
+
+    private (bool ok, byte[] actual, byte[] expected) VerifyComputed(
+        FieldDef f, byte[] frame, int off, int size, Dictionary<string, int> resolved)
+    {
+        var spec = f.Compute!;
+        if (spec.Algo == "length")
+        {
+            var expected = _algos.Get("length").Compute(CountedRange(spec, resolved, frame), spec);
+            var actual = new ArraySegment<byte>(frame, off, size).ToArray();
+            return (actual.SequenceEqual(Ordered(expected, f)), actual, Ordered(expected, f));
+        }
+        // checksum range from..to
+        int fromOff = SumSizesBefore(spec.From!, resolved);
+        int toEnd = SumSizesBefore(spec.To!, resolved) + resolved[spec.To!];
+        var range = new ArraySegment<byte>(frame, fromOff, toEnd - fromOff).ToArray();
+        var expectedCk = _algos.Get(spec.Algo).Compute(range, spec);
+        var actualCk = new ArraySegment<byte>(frame, off, size).ToArray();
+        var ordered = Ordered(expectedCk, f);
+        return (actualCk.SequenceEqual(ordered), actualCk, ordered);
+    }
+
+    private byte[] CountedRange(ComputeSpec spec, Dictionary<string, int> resolved, byte[] frame)
+    {
+        using var ms = new MemoryStream();
+        foreach (var n in spec.Counts ?? Array.Empty<string>())
+            ms.Write(new ArraySegment<byte>(frame, SumSizesBefore(n, resolved), resolved[n]));
+        return ms.ToArray();
+    }
+
+    // Sum of resolved sizes for all layout fields preceding `name`.
+    private int SumSizesBefore(string name, Dictionary<string, int> resolved)
+    {
+        int sum = 0;
+        foreach (var f in _def.Layout)
+        {
+            if (f.Name == name) break;
+            sum += resolved[f.Name];
+        }
+        return sum;
+    }
+
+    // Apply the field's byte order to the algorithm's big-endian canonical bytes.
+    private byte[] Ordered(byte[] canonical, FieldDef f)
+    {
+        var order = f.ByteOrder ?? _def.DefaultByteOrder;
+        if (order == ByteOrder.Big) return canonical;
+        var c = canonical.ToArray();
+        Array.Reverse(c);
+        return c;
+    }
+
+    private static string ToHexDisplay(byte[] b) =>
+        string.Join(' ', b.Select(x => x.ToString("X2")));
 }
