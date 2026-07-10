@@ -8,5 +8,8 @@
         <DataTemplate DataType="{x:Type vm:ConnectionViewModel}">
             <views:ConnectionView/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:CommandPanelViewModel}">
+            <views:CommandPanelView/>
+        </DataTemplate>
     </Application.Resources>
 </Application>
