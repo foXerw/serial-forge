@@ -25,19 +25,20 @@ public partial class LogViewModel : ViewModelBase
     // formatting so RX/TX share one rendering rule.
     public void AddTx(byte[] frame, DecodedFrame decoded)
     {
-        var detail = !string.IsNullOrEmpty(decoded.Error)
-            ? "ERROR: " + decoded.Error
-            : string.Join(" | ", decoded.Fields.Select(f => $"{f.Name}={f.Value}"));
-        Append("TX", frame, detail, !string.IsNullOrEmpty(decoded.Error));
+        var (detail, error) = FormatDetail(decoded);
+        Append("TX", frame, detail, error);
     }
 
     public void AddRx(DecodedFrame decoded)
     {
-        var detail = !string.IsNullOrEmpty(decoded.Error)
-            ? "ERROR: " + decoded.Error
-            : string.Join(" | ", decoded.Fields.Select(f => $"{f.Name}={f.Value}"));
-        Append("RX", decoded.Raw, detail, !string.IsNullOrEmpty(decoded.Error));
+        var (detail, error) = FormatDetail(decoded);
+        Append("RX", decoded.Raw, detail, error);
     }
+
+    private static (string Detail, bool IsError) FormatDetail(Core.Models.DecodedFrame d) =>
+        string.IsNullOrEmpty(d.Error)
+            ? (string.Join(" | ", d.Fields.Select(f => $"{f.Name}={f.Value}")), false)
+            : ($"ERROR: {d.Error}", true);
 
     private void Append(string dir, byte[] frame, string? detail, bool error)
     {
