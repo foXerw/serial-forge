@@ -14,7 +14,18 @@ public sealed class UIntCodec : ICodec
 
     public byte[] Encode(object value, int length, ByteOrder order)
     {
-        ulong v = Convert.ToUInt64(value);
+        // Tolerant parse: JSON fix values arrive as hex strings ("0x01") which
+        // Convert.ToUInt64(object) rejects with FormatException. Accept numeric
+        // primitives directly and parse strings as 0x-prefixed hex or decimal.
+        ulong v = value switch
+        {
+            ulong u => u,
+            long l => (ulong)l,
+            int i => (ulong)i,
+            string s when s.StartsWith("0x", StringComparison.OrdinalIgnoreCase) => Convert.ToUInt64(s[2..], 16),
+            string s => Convert.ToUInt64(s, 10),
+            _ => Convert.ToUInt64(value)
+        };
         int size = FixedSize!.Value;
         var bytes = new byte[size];
         for (int i = 0; i < size; i++)
