@@ -13,6 +13,8 @@ public sealed class ProtocolEngine
 
     public ProtocolEngine(ProtocolDefinition def) => _def = def;
 
+    public ProtocolDefinition Definition => _def;
+
     public byte[] Encode(CommandInstance inst)
     {
         // 1. Resolve outer value fields: apply command.fix, then instance overrides.
