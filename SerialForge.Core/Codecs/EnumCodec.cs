@@ -4,17 +4,15 @@ public sealed class EnumCodec : ICodec
 {
     private readonly UIntCodec _inner;
     private readonly Dictionary<string, string> _nameToValue;
-    private readonly Dictionary<ulong, string> _valueToName;
 
     public EnumCodec(CodecType underlying, Dictionary<string, string>? enumMap)
     {
         _inner = new UIntCodec(underlying);
-        _nameToValue = enumMap ?? new();
-        _valueToName = new();
-        foreach (var kv in _nameToValue)
+        _nameToValue = new();
+        if (enumMap != null)
         {
-            ulong v = Convert.ToUInt64(kv.Key.Replace("0x", ""), 16);
-            _valueToName[v] = kv.Value;
+            foreach (var kv in enumMap)
+                _nameToValue[kv.Value] = kv.Key;
         }
     }
     public int? FixedSize => _inner.FixedSize;

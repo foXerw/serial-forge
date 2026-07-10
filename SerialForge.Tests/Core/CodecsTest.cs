@@ -14,7 +14,7 @@ public class CodecsTest
         var bytes = codec.Encode(0x0102, 2, ByteOrder.Little);
         Assert.Equal(new byte[] { 0x02, 0x01 }, bytes);
         var (value, consumed) = codec.Decode(bytes, 0, 2, ByteOrder.Little);
-        Assert.Equal(0x0102, value);
+        Assert.Equal(0x0102UL, value);
         Assert.Equal(2, consumed);
     }
 
@@ -52,6 +52,6 @@ public class CodecsTest
         var codec = new EnumCodec(CodecType.U8, map);
         var (value, _) = codec.Decode(new byte[] { 0x09 }, 0, 1, ByteOrder.Little);
         // Unknown value returns the raw numeric; engine/UI marks unknown.
-        Assert.Equal(0x09, value);
+        Assert.Equal(0x09UL, value);
     }
 }

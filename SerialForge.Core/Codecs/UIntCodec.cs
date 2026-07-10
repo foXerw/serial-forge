@@ -31,9 +31,6 @@ public sealed class UIntCodec : ICodec
             int bi = order == ByteOrder.Little ? offset + i : offset + size - 1 - i;
             v |= ((ulong)data[bi]) << (8 * i);
         }
-        // Box as int where the value fits (matches callers' int literals and
-        // all byte/ushort values); keep ulong for U32 values exceeding int.MaxValue.
-        object boxed = v <= int.MaxValue ? (object)(int)v : v;
-        return (boxed, size);
+        return (v, size);
     }
 }
