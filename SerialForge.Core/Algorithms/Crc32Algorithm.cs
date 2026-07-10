@@ -22,14 +22,14 @@ public sealed class Crc32Algorithm : IComputeAlgorithm
         crc ^= xorOut;
         if (refOut) crc = Reverse32(crc);
 
-        // little-endian canonical (matches the zlib/Ethernet CRC-32 wire convention);
-        // engine applies any configured field byte order on top.
+        // big-endian canonical (MSB first) — the shared canonical byte order for all
+        // computed algorithms; the engine applies any configured field byte order on top.
         return new byte[]
         {
-            (byte)(crc & 0xFF),
-            (byte)((crc >> 8) & 0xFF),
+            (byte)((crc >> 24) & 0xFF),
             (byte)((crc >> 16) & 0xFF),
-            (byte)((crc >> 24) & 0xFF)
+            (byte)((crc >> 8) & 0xFF),
+            (byte)(crc & 0xFF)
         };
     }
 

@@ -39,7 +39,7 @@ public class CrcAlgorithmsTest
             { "xorOut", Json.Serialize("0xFFFFFFFF") }
         });
         var outBytes = new Crc32Algorithm().Compute(data, spec);
-        Assert.Equal(new byte[] { 0x26, 0x39, 0xF4, 0xCB }, outBytes);
+        Assert.Equal(new byte[] { 0xCB, 0xF4, 0x39, 0x26 }, outBytes);
     }
 
     private static class Json
