@@ -1,0 +1,16 @@
+<UserControl x:Class="SerialForge.App.Views.LogView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DockPanel Margin="4">
+        <TextBlock DockPanel.Dock="Top" Text="RX/TX Log" FontWeight="Bold" Margin="2"/>
+        <ListView ItemsSource="{Binding Entries}" FontFamily="Consolas">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Dir" Width="40" DisplayMemberBinding="{Binding Direction}"/>
+                    <GridViewColumn Header="Hex" Width="500" DisplayMemberBinding="{Binding Hex}"/>
+                    <GridViewColumn Header="Detail" Width="400" DisplayMemberBinding="{Binding Detail}"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+    </DockPanel>
+</UserControl>
