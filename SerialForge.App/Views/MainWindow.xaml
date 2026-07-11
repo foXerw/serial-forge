@@ -16,6 +16,7 @@
                 </StackPanel>
             </Grid>
         </Border>
+        <ContentControl DockPanel.Dock="Top" Content="{Binding RawSend}"/>
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>

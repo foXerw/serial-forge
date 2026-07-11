@@ -13,6 +13,7 @@ public partial class MainViewModel : ViewModelBase
     public ConnectionViewModel Connection { get; }
     public CommandPanelViewModel CommandPanel { get; }
     public LogViewModel Log { get; }
+    public RawSendViewModel RawSend { get; }
 
     private ProtocolEngine _engine;
     private FrameDispatcher _dispatcher;
@@ -53,7 +54,16 @@ public partial class MainViewModel : ViewModelBase
             try { t.Write(frame); }
             catch (Exception ex) { UiDispatcher.Marshal(() => System.Diagnostics.Debug.WriteLine("write failed: " + ex.Message)); }
         }
+        void SendRaw(byte[] bytes)
+        {
+            UiDispatcher.Marshal(() => Log.AddTx(bytes));   // raw TX, no protocol decode
+            var t = Connection.Transport;
+            if (t is null || !t.IsOpen) return;
+            try { t.Write(bytes); }
+            catch (Exception ex) { UiDispatcher.Marshal(() => System.Diagnostics.Debug.WriteLine("raw write failed: " + ex.Message)); }
+        }
         CommandPanel = new CommandPanelViewModel(_engine, Send, msg => Log.AddError(msg));
+        RawSend = new RawSendViewModel(SendRaw, msg => Log.AddError(msg));
         if (def is not null) CommandPanel.Load(def);
 
         Connection.PropertyChanged += (_, e) =>

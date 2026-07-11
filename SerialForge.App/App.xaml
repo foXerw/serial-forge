@@ -14,5 +14,8 @@
         <DataTemplate DataType="{x:Type vm:LogViewModel}">
             <views:LogView/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:RawSendViewModel}">
+            <views:RawSendView/>
+        </DataTemplate>
     </Application.Resources>
 </Application>

@@ -1,0 +1,10 @@
+<UserControl x:Class="SerialForge.App.Views.RawSendView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Orientation="Horizontal" Margin="4">
+        <TextBlock Text="原始发送：" VerticalAlignment="Center" Margin="2"/>
+        <TextBox Text="{Binding HexText, UpdateSourceTrigger=PropertyChanged}" Width="320" Margin="2"
+                 FontFamily="Consolas" ToolTip="十六进制，如 AA 55 10"/>
+        <Button Content="发送" Command="{Binding Send}" Margin="8,2,2,2"/>
+    </StackPanel>
+</UserControl>
