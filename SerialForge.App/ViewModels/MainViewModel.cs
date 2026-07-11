@@ -17,6 +17,8 @@ public partial class MainViewModel : ViewModelBase
     public CommandPanelViewModel CommandPanel { get; }
     public LogViewModel Log { get; }
     public RawSendViewModel RawSend { get; }
+    // Window title: shows which protocol is loaded, updates on hot-swap.
+    public string CurrentProtocolName => _currentDef is null ? "SerialForge" : $"SerialForge — {_currentDef.Name}";
 
     private ProtocolEngine _engine;
     private FrameDispatcher _dispatcher;
@@ -146,6 +148,7 @@ public partial class MainViewModel : ViewModelBase
     public void ApplyProtocol(ProtocolDefinition def)
     {
         _currentDef = def;
+        OnPropertyChanged(nameof(CurrentProtocolName));
         _engine = new ProtocolEngine(def);
         _dispatcher = new FrameDispatcher(_engine, a => UiDispatcher.Marshal(a));
         _dispatcher.FrameDecoded += (_, f) => UiDispatcher.Marshal(() => Log.AddRx(f));
