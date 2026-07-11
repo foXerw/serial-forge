@@ -1,5 +1,6 @@
 using System.Text.Json;
 using SerialForge.App.ViewModels;
+using SerialForge.Core;
 using SerialForge.Core.Models;
 
 namespace SerialForge.Tests.App;
@@ -56,5 +57,40 @@ public class EditorViewModelsTest
         Assert.Equal("payload", vm.Counts);
         var back = vm.ToComputeSpec();
         Assert.Equal(new[] { "payload" }, back.Counts);
+    }
+
+    [Fact]
+    public void Literal_value_round_trips_to_0x_hex_array()
+    {
+        var vm = new LayoutFieldViewModel
+        { Kind = FieldKind.Literal, Codec = CodecType.Bytes, LiteralValue = "AA 55" };
+        var def = vm.ToFieldDef(ByteOrder.Little);
+        Assert.Equal(new[] { "0xaa", "0x55" }, def.LiteralValue);
+    }
+
+    [Fact]
+    public void Length_compute_field_derives_width_from_codec()
+    {
+        var vm = new LayoutFieldViewModel
+        { Name = "len", Kind = FieldKind.Computed, Codec = CodecType.U16 };
+        vm.Compute.Algo = "length";
+        vm.Compute.Counts = "payload";
+        var def = vm.ToFieldDef(ByteOrder.Little);
+        Assert.Equal(2, def.Compute!.Params!["width"].GetInt32());
+    }
+
+    [Fact]
+    public void Command_round_trips_fix_and_payload_fields()
+    {
+        var src = new CommandDef("writeConfig", "Write Config",
+            new() { ["cmd"] = "0x05" },
+            new[] { new PayloadFieldDef("id", CodecType.U8, null, null, "0") });
+        var vm = new CommandEditorViewModel(src);
+        Assert.Equal("writeConfig", vm.Name);
+        Assert.Single(vm.Fix);
+        Assert.Single(vm.PayloadFields);
+        var back = vm.ToDef();
+        Assert.Equal("0x05", back.Fix["cmd"]);
+        Assert.Equal("id", back.PayloadFields[0].Name);
     }
 }
