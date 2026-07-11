@@ -34,6 +34,11 @@ public sealed class FrameDispatcher
     /// <summary>Feed raw bytes from the transport.</summary>
     public void OnBytes(byte[] chunk) => _framer.Feed(chunk);
 
+    /// <summary>Flush any partial frame that has sat idle past the protocol's
+    /// frame timeout (Timeout/delimiter framing, or a stalled length-prefix read).
+    /// Production wires this to a periodic UI-thread timer; tests call it directly.</summary>
+    public void Tick() => _framer.Tick();
+
     private void OnFramed(byte[] frame)
     {
         var decoded = _engine.Decode(frame);

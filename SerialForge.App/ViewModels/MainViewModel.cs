@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SerialForge.App.Services;
@@ -21,13 +22,22 @@ public partial class MainViewModel : ViewModelBase
     private readonly IDialogService? _dialogs;
     private ITransport? _subscribedTransport;
     private EventHandler<byte[]> _onBytes;
+    private readonly DispatcherTimer? _flushTimer;
 
     public ICommand OpenEditor { get; }
     public ICommand ShowHelp { get; }
     public ICommand OpenUpgrade { get; }
     public ICommand ExportLog { get; }
 
-    public MainViewModel() : this(new ProtocolCatalog().LoadFirst(), new DialogService()) { }
+    public MainViewModel() : this(new ProtocolCatalog().LoadFirst(), new DialogService())
+    {
+        // Idle-flush timer: drives FrameDispatcher.Tick so Timeout/delimiter framing
+        // (and stalled length-prefix reads) flush partial frames. Only the production
+        // ctor starts it; test ctors are unaffected.
+        _flushTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        _flushTimer.Tick += (_, _) => _dispatcher.Tick();
+        _flushTimer.Start();
+    }
 
     public MainViewModel(ProtocolDefinition? def) : this(def, null) { }
 
