@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SerialForge.Core.Codecs;
 using SerialForge.Core.Models;
 
 namespace SerialForge.App.ViewModels;
@@ -31,6 +32,22 @@ public partial class LogViewModel : ViewModelBase
     // When true (default), the view auto-scrolls to the newest entry. Toggle off
     // to scroll up and inspect history without being yanked back.
     [ObservableProperty] private bool _autoScroll = true;
+
+    [ObservableProperty] private LogEntry? _selectedEntry;
+    // Set by MainViewModel to the raw-send path; when set, Resend replays a
+    // selected log entry's bytes straight down the wire.
+    public Action<byte[]>? ResendCallback { get; set; }
+
+    partial void OnSelectedEntryChanged(LogEntry? value) => ResendCommand.NotifyCanExecuteChanged();
+
+    [RelayCommand(CanExecute = nameof(CanResend))]
+    private void Resend()
+    {
+        if (SelectedEntry is null || ResendCallback is null) return;
+        try { ResendCallback(BytesCodec.ParseHex(SelectedEntry.Hex)); }
+        catch { /* malformed hex in a log entry — ignore */ }
+    }
+    private bool CanResend() => SelectedEntry is not null && ResendCallback is not null;
 
     public void AddTx(byte[] frame) => Append("TX", frame, detail: null, error: false);
 

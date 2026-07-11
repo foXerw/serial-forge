@@ -17,6 +17,32 @@ public class LogViewModelTest
     }
 
     [Fact]
+    public void Resend_replays_selected_entry_bytes_via_callback()
+    {
+        byte[]? sent = null;
+        var vm = new LogViewModel { ResendCallback = b => sent = b };
+        vm.AddTx(new byte[] { 0xAA, 0x55, 0x10 });
+        vm.SelectedEntry = vm.Entries[0];
+
+        Assert.True(vm.ResendCommand.CanExecute(null));
+        vm.ResendCommand.Execute(null);
+
+        Assert.Equal(new byte[] { 0xAA, 0x55, 0x10 }, sent);
+    }
+
+    [Fact]
+    public void ResendCommand_disabled_without_selection_or_callback()
+    {
+        var vm = new LogViewModel();
+        Assert.False(vm.ResendCommand.CanExecute(null));         // no selection, no callback
+        vm.ResendCallback = _ => { };
+        Assert.False(vm.ResendCommand.CanExecute(null));         // still no selection
+        vm.AddTx(new byte[] { 0x01 });
+        vm.SelectedEntry = vm.Entries[0];
+        Assert.True(vm.ResendCommand.CanExecute(null));          // both present
+    }
+
+    [Fact]
     public void AddTx_and_AddRx_append_entries_with_direction_and_hex()
     {
         var vm = new LogViewModel();

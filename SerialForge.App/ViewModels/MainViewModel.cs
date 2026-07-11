@@ -79,6 +79,7 @@ public partial class MainViewModel : ViewModelBase
         }
         CommandPanel = new CommandPanelViewModel(_engine, Send, msg => Log.AddError(msg));
         RawSend = new RawSendViewModel(SendRaw, msg => Log.AddError(msg));
+        Log.ResendCallback = SendRaw;   // let the log re-send an entry's bytes
         if (def is not null) CommandPanel.Load(def);
 
         Connection.PropertyChanged += (_, e) =>
