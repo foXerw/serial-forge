@@ -9,13 +9,18 @@
                     <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="SerialForge — 串口协议调试" VerticalAlignment="Center" FontWeight="Bold"/>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Content="📖 使用说明" Command="{Binding ShowHelp}" Margin="4,0"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Content="✎ 编辑协议" Command="{Binding OpenEditor}" Margin="4,0"/>
                     <Button Content="⬆ 固件升级" Command="{Binding OpenUpgrade}" Margin="4,0"/>
-                    <Button Content="💾 导出日志" Command="{Binding ExportLog}" Margin="4,0"/>
-                    <Button Content="💾 保存会话" Command="{Binding SaveSession}" Margin="4,0"/>
-                    <Button Content="📂 加载会话" Command="{Binding LoadSession}" Margin="4,0"/>
+                    <Menu Background="Transparent" Margin="8,0,0,0">
+                        <MenuItem Header="会话与日志">
+                            <MenuItem Header="💾 保存会话" Command="{Binding SaveSession}"/>
+                            <MenuItem Header="📂 加载会话" Command="{Binding LoadSession}"/>
+                            <Separator/>
+                            <MenuItem Header="📄 导出日志" Command="{Binding ExportLog}"/>
+                        </MenuItem>
+                    </Menu>
+                    <Button Content="📖 使用说明" Command="{Binding ShowHelp}" Margin="12,0,0,0"/>
                 </StackPanel>
             </Grid>
         </Border>
