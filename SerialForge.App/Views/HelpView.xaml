@@ -1,0 +1,16 @@
+<Window x:Class="SerialForge.App.Views.HelpView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="使用说明" Height="500" Width="640">
+    <ScrollViewer Padding="16">
+        <StackPanel>
+            <TextBlock Text="SerialForge 使用流程" FontWeight="Bold" FontSize="18" Margin="0,0,0,8"/>
+            <TextBlock Text="1. 定义协议：点右上角「编辑协议」，在弹出窗口里设置前导字节/长度字段，增删帧字段（literal/value/computed）与命令，填好后点「应用」即可即时生效；也可「打开…」现有 JSON 或「另存为…」。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="2. 连接串口：顶部选择端口与波特率，点「连接」。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="3. 选择命令并填写应用数据：命令下拉选择后，下方自动出现该命令的可编辑字段；literal/computed 字段由引擎自动填充。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="4. 发送并观察日志：点「发送」，下方「收发日志」显示时间戳、方向(TX/RX)、十六进制与按字段解析；坏帧红色标记，不崩溃。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="示例帧格式（demo-mcu）：AA 55 | len(u16le) | cmd(u8) | payload | crc16(u16le)" TextWrapping="Wrap" FontFamily="Consolas" Margin="0,12,0,0"/>
+            <TextBlock Text="字段三态：literal=固定常量（只读）；value=应用数据（可编辑）；computed=引擎计算（长度/CRC，只读自动）。" TextWrapping="Wrap" Margin="0,8"/>
+        </StackPanel>
+    </ScrollViewer>
+</Window>
