@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SerialForge.Core.Models;
 
@@ -26,6 +27,10 @@ public partial class LogViewModel : ViewModelBase
 
     [RelayCommand]
     private void Clear() => Entries.Clear();
+
+    // When true (default), the view auto-scrolls to the newest entry. Toggle off
+    // to scroll up and inspect history without being yanked back.
+    [ObservableProperty] private bool _autoScroll = true;
 
     public void AddTx(byte[] frame) => Append("TX", frame, detail: null, error: false);
 
