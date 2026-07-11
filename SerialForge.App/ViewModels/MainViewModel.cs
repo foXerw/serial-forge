@@ -24,9 +24,7 @@ public partial class MainViewModel : ViewModelBase
     public ICommand OpenEditor { get; }
     public ICommand ShowHelp { get; }
 
-    // Production: load demo; dialogs wired in Task 9 (DialogService). Until then
-    // null dialogs make OpenEditor/ShowHelp no-op so Task 6 compiles standalone.
-    public MainViewModel() : this(new ProtocolCatalog().LoadFirst(), null) { }
+    public MainViewModel() : this(new ProtocolCatalog().LoadFirst(), new DialogService()) { }
 
     public MainViewModel(ProtocolDefinition? def) : this(def, null) { }
 
