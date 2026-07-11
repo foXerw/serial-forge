@@ -25,6 +25,7 @@ public partial class MainViewModel : ViewModelBase
     public ICommand OpenEditor { get; }
     public ICommand ShowHelp { get; }
     public ICommand OpenUpgrade { get; }
+    public ICommand ExportLog { get; }
 
     public MainViewModel() : this(new ProtocolCatalog().LoadFirst(), new DialogService()) { }
 
@@ -80,6 +81,13 @@ public partial class MainViewModel : ViewModelBase
             _dialogs.ShowEditor(new ProtocolEditorViewModel(_currentDef, ApplyProtocol, _dialogs));
         });
         ShowHelp = new RelayCommand(() => _dialogs?.ShowHelp());
+        ExportLog = new RelayCommand(() =>
+        {
+            var path = _dialogs?.PickSaveLogPath();
+            if (path is null) return;
+            try { Log.Export(path); }
+            catch (Exception ex) { Log.AddError("导出失败：" + ex.Message); }
+        });
         OpenUpgrade = new RelayCommand(() =>
         {
             if (_dialogs is null) return;

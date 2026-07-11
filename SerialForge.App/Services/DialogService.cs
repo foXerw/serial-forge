@@ -31,4 +31,10 @@ public sealed class DialogService : IDialogService
         var dlg = new OpenFileDialog { Filter = "固件镜像 (*.bin;*.hex)|*.bin;*.hex|所有文件 (*.*)|*.*", Title = "选择固件文件" };
         return dlg.ShowDialog() == true ? dlg.FileName : null;
     }
+
+    public string? PickSaveLogPath()
+    {
+        var dlg = new SaveFileDialog { Filter = "日志文件 (*.txt;*.log)|*.txt;*.log", Title = "导出收发日志", AddExtension = true };
+        return dlg.ShowDialog() == true ? dlg.FileName : null;
+    }
 }

@@ -46,4 +46,19 @@ public class LogViewModelTest
         Assert.Equal("错误", e.Direction);
         Assert.Contains("编码失败", e.Detail);
     }
+
+    [Fact]
+    public void Export_writes_entries_to_file()
+    {
+        var stamp = new DateTime(2026, 7, 11, 12, 30, 45, 123);
+        var vm = new LogViewModel(5000, () => stamp);
+        vm.AddTx(new byte[] { 0xAA, 0x55 });
+        vm.AddError("boom");
+        var path = Path.Combine(Path.GetTempPath(), "log-" + Guid.NewGuid().ToString("N") + ".txt");
+        vm.Export(path);
+        var text = File.ReadAllText(path);
+        Assert.Contains("TX", text);
+        Assert.Contains("AA 55", text);
+        Assert.Contains("boom", text);
+    }
 }

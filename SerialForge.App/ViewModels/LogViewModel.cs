@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using SerialForge.Core.Models;
 
 namespace SerialForge.App.ViewModels;
@@ -59,5 +60,13 @@ public partial class LogViewModel : ViewModelBase
             IsError = error
         });
         while (Entries.Count > _maxEntries) Entries.RemoveAt(0);
+    }
+
+    // Write the whole log (timestamp | dir | hex | detail per line) to a file.
+    public void Export(string path)
+    {
+        using var writer = new StreamWriter(path);
+        foreach (var e in Entries)
+            writer.WriteLine($"{e.Timestamp:HH:mm:ss.fff} | {e.Direction} | {e.Hex}" + (e.Detail is null ? "" : " | " + e.Detail));
     }
 }
