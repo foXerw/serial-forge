@@ -29,6 +29,8 @@ public sealed partial class ProtocolEditorViewModel : ViewModelBase
     [ObservableProperty] private string _preamble = "0xAA 0x55";
     [ObservableProperty] private string _lengthField = "len";
     [ObservableProperty] private int _frameTimeoutMs = 50;
+    [ObservableProperty] private string _rawJson = "";
+    [ObservableProperty] private bool _isDirty;
 
     public ObservableCollection<LayoutFieldViewModel> LayoutFields { get; } = new();
     public ObservableCollection<CommandEditorViewModel> Commands { get; } = new();
@@ -36,6 +38,14 @@ public sealed partial class ProtocolEditorViewModel : ViewModelBase
     public ICommand Apply { get; }
     public ICommand Open { get; }
     public ICommand SaveAs { get; }
+    public ICommand AddLayoutField { get; }
+    public ICommand RemoveLayoutField { get; }
+    public ICommand MoveLayoutFieldUp { get; }
+    public ICommand MoveLayoutFieldDown { get; }
+    public ICommand AddCommand { get; }
+    public ICommand RemoveCommand { get; }
+    public ICommand RefreshRaw { get; }
+    public ICommand ApplyRaw { get; }
 
     public ProtocolEditorViewModel(ProtocolDefinition? initial, Action<ProtocolDefinition> apply, IDialogService? dialogs)
     {
@@ -44,6 +54,14 @@ public sealed partial class ProtocolEditorViewModel : ViewModelBase
         Apply = new RelayCommand(DoApply);
         Open = new RelayCommand(DoOpen);
         SaveAs = new RelayCommand(DoSaveAs, () => true);
+        AddLayoutField = new RelayCommand(DoAddLayoutField);
+        RemoveLayoutField = new RelayCommand<LayoutFieldViewModel>(DoRemoveLayoutField);
+        MoveLayoutFieldUp = new RelayCommand<LayoutFieldViewModel>(DoMoveLayoutFieldUp);
+        MoveLayoutFieldDown = new RelayCommand<LayoutFieldViewModel>(DoMoveLayoutFieldDown);
+        AddCommand = new RelayCommand(DoAddCommand);
+        RemoveCommand = new RelayCommand<CommandEditorViewModel>(DoRemoveCommand);
+        RefreshRaw = new RelayCommand(DoRefreshRaw);
+        ApplyRaw = new RelayCommand(DoApplyRaw);
         Populate(initial);
     }
 
@@ -60,11 +78,14 @@ public sealed partial class ProtocolEditorViewModel : ViewModelBase
         Commands.Clear();
         foreach (var c in def.Commands) Commands.Add(new CommandEditorViewModel(c));
         ErrorMessage = null;
+        IsDirty = false;
         OnPropertyChanged(nameof(LayoutFields));
         OnPropertyChanged(nameof(Commands));
     }
 
-    public ProtocolDefinition Build()
+    // Constructs the record WITHOUT validation — used for raw-JSON display so an
+    // invalid draft still serializes. Build() adds the Validate call.
+    internal ProtocolDefinition BuildDraft()
     {
         var framing = new FramingRule(
             FramingMode,
@@ -73,9 +94,45 @@ public sealed partial class ProtocolEditorViewModel : ViewModelBase
             FrameTimeoutMs, null, null);
         var layout = LayoutFields.Select(f => f.ToFieldDef(DefaultByteOrder)).ToArray();
         var commands = Commands.Select(c => c.ToDef()).ToArray();
-        var def = new ProtocolDefinition(Name, Version, DefaultByteOrder, framing, layout, commands);
+        return new ProtocolDefinition(Name, Version, DefaultByteOrder, framing, layout, commands);
+    }
+
+    public ProtocolDefinition Build()
+    {
+        var def = BuildDraft();
         ProtocolLoader.Validate(def);   // throws ProtocolException if invalid
         return def;
+    }
+
+    private void DoAddLayoutField() { LayoutFields.Add(new LayoutFieldViewModel()); IsDirty = true; }
+    private void DoRemoveLayoutField(LayoutFieldViewModel? f) { if (f is not null) LayoutFields.Remove(f); IsDirty = true; }
+    private void DoMoveLayoutFieldUp(LayoutFieldViewModel? f)
+    {
+        if (f is null) return;
+        int i = LayoutFields.IndexOf(f);
+        if (i > 0) { LayoutFields.RemoveAt(i); LayoutFields.Insert(i - 1, f); }
+        IsDirty = true;
+    }
+    private void DoMoveLayoutFieldDown(LayoutFieldViewModel? f)
+    {
+        if (f is null) return;
+        int i = LayoutFields.IndexOf(f);
+        if (i >= 0 && i < LayoutFields.Count - 1) { LayoutFields.RemoveAt(i); LayoutFields.Insert(i + 1, f); }
+        IsDirty = true;
+    }
+    private void DoAddCommand() { Commands.Add(new CommandEditorViewModel()); IsDirty = true; }
+    private void DoRemoveCommand(CommandEditorViewModel? c) { if (c is not null) Commands.Remove(c); IsDirty = true; }
+
+    private void DoRefreshRaw()
+    {
+        try { RawJson = ProtocolSaver.ToJson(BuildDraft()); }
+        catch (Exception ex) { RawJson = "<序列化失败：" + ex.Message + ">"; }
+    }
+    private void DoApplyRaw()
+    {
+        // Populate resets IsDirty=false (a JSON load is a clean state).
+        try { Populate(ProtocolLoader.Load(RawJson)); }
+        catch (Exception ex) { ErrorMessage = "JSON 解析失败：" + ex.Message; }
     }
 
     private void DoApply()

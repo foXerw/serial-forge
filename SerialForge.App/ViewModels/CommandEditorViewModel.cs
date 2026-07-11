@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SerialForge.Core.Models;
 
 namespace SerialForge.App.ViewModels;
@@ -19,8 +21,19 @@ public sealed partial class CommandEditorViewModel : ViewModelBase
     public ObservableCollection<FixEntry> Fix { get; } = new();
     public ObservableCollection<PayloadFieldViewModel> PayloadFields { get; } = new();
 
-    public CommandEditorViewModel() { }
-    public CommandEditorViewModel(CommandDef c)
+    public ICommand AddPayloadField { get; }
+    public ICommand RemovePayloadField { get; }
+    public ICommand AddFix { get; }
+    public ICommand RemoveFix { get; }
+
+    public CommandEditorViewModel()
+    {
+        AddPayloadField = new RelayCommand(() => PayloadFields.Add(new PayloadFieldViewModel()));
+        RemovePayloadField = new RelayCommand<PayloadFieldViewModel>(p => PayloadFields.Remove(p!));
+        AddFix = new RelayCommand(() => Fix.Add(new FixEntry()));
+        RemoveFix = new RelayCommand<FixEntry>(e => Fix.Remove(e!));
+    }
+    public CommandEditorViewModel(CommandDef c) : this()
     {
         _name = c.Name; _title = c.Title;
         foreach (var kv in c.Fix) Fix.Add(new FixEntry(kv.Key, kv.Value));

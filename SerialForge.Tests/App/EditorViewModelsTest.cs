@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SerialForge.App.ViewModels;
 using SerialForge.Core;
+using SerialForge.Core.Engine;
 using SerialForge.Core.Models;
 
 namespace SerialForge.Tests.App;
@@ -127,5 +128,100 @@ public class EditorViewModelsTest
         vm.Apply.Execute(null);
         Assert.Null(applied);
         Assert.False(string.IsNullOrEmpty(vm.ErrorMessage));
+    }
+
+    [Fact]
+    public void AddLayoutField_and_RemoveLayoutField_mutate_collection()
+    {
+        var vm = new ProtocolEditorViewModel(DemoDef(), _ => { }, null!);
+        int n = vm.LayoutFields.Count;
+        vm.AddLayoutField.Execute(null);
+        Assert.Equal(n + 1, vm.LayoutFields.Count);
+        var last = vm.LayoutFields[^1];
+        vm.RemoveLayoutField.Execute(last);
+        Assert.Equal(n, vm.LayoutFields.Count);
+    }
+
+    [Fact]
+    public void MoveLayoutFieldUp_swaps_with_previous()
+    {
+        var vm = new ProtocolEditorViewModel(DemoDef(), _ => { }, null!);
+        var first = vm.LayoutFields[0]; var second = vm.LayoutFields[1];
+        vm.MoveLayoutFieldUp.Execute(second);          // moves second up
+        Assert.Same(second, vm.LayoutFields[0]);
+        Assert.Same(first, vm.LayoutFields[1]);
+        vm.MoveLayoutFieldUp.Execute(first);           // first already at top -> no-op
+        Assert.Same(first, vm.LayoutFields[0]);
+    }
+
+    [Fact]
+    public void AddCommand_and_RemoveCommand_mutate_collection()
+    {
+        var vm = new ProtocolEditorViewModel(DemoDef(), _ => { }, null!);
+        int n = vm.Commands.Count;
+        vm.AddCommand.Execute(null);
+        Assert.Equal(n + 1, vm.Commands.Count);
+        var added = vm.Commands[^1];
+        vm.RemoveCommand.Execute(added);
+        Assert.Equal(n, vm.Commands.Count);
+    }
+
+    [Fact]
+    public void RefreshRaw_serializes_draft_to_parseable_json()
+    {
+        var vm = new ProtocolEditorViewModel(DemoDef(), _ => { }, null!);
+        vm.RefreshRaw.Execute(null);
+        Assert.False(string.IsNullOrWhiteSpace(vm.RawJson));
+        ProtocolLoader.Load(vm.RawJson);   // round-trips
+    }
+
+    [Fact]
+    public void ApplyRaw_populates_from_json_and_surfaces_parse_errors()
+    {
+        var vm = new ProtocolEditorViewModel(DemoDef(), _ => { }, null!);
+        // valid JSON -> repopulates
+        vm.RawJson = File.ReadAllText("Fixtures/demo-mcu.json");
+        vm.ApplyRaw.Execute(null);
+        Assert.Equal("demo-mcu", vm.Name);
+        Assert.True(string.IsNullOrEmpty(vm.ErrorMessage));
+        // garbage -> error, draft unchanged
+        vm.RawJson = "{ not valid json";
+        string nameBefore = vm.Name;
+        vm.ApplyRaw.Execute(null);
+        Assert.Equal(nameBefore, vm.Name);
+        Assert.False(string.IsNullOrEmpty(vm.ErrorMessage));
+    }
+
+    [Fact]
+    public void BuildDraft_serializes_invalid_draft_without_throwing()
+    {
+        var vm = new ProtocolEditorViewModel(DemoDef(), _ => { }, null!);
+        vm.LayoutFields.First(f => f.Compute.IsCrc).Compute.To = "no_such"; // invalid
+        var ex = Record.Exception(() => ProtocolSaver.ToJson(vm.BuildDraft()));
+        Assert.Null(ex);   // BuildDraft does not validate; only Build() does
+    }
+
+    [Fact]
+    public void AddPayloadField_and_RemovePayloadField_mutate_collection()
+    {
+        var cmd = new CommandEditorViewModel();
+        int n = cmd.PayloadFields.Count;
+        cmd.AddPayloadField.Execute(null);
+        Assert.Equal(n + 1, cmd.PayloadFields.Count);
+        var last = cmd.PayloadFields[^1];
+        cmd.RemovePayloadField.Execute(last);
+        Assert.Equal(n, cmd.PayloadFields.Count);
+    }
+
+    [Fact]
+    public void AddFix_and_RemoveFix_mutate_collection()
+    {
+        var cmd = new CommandEditorViewModel();
+        int n = cmd.Fix.Count;
+        cmd.AddFix.Execute(null);
+        Assert.Equal(n + 1, cmd.Fix.Count);
+        var last = cmd.Fix[^1];
+        cmd.RemoveFix.Execute(last);
+        Assert.Equal(n, cmd.Fix.Count);
     }
 }
