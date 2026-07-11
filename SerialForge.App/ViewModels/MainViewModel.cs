@@ -23,6 +23,7 @@ public partial class MainViewModel : ViewModelBase
 
     public ICommand OpenEditor { get; }
     public ICommand ShowHelp { get; }
+    public ICommand OpenUpgrade { get; }
 
     public MainViewModel() : this(new ProtocolCatalog().LoadFirst(), new DialogService()) { }
 
@@ -69,6 +70,15 @@ public partial class MainViewModel : ViewModelBase
             _dialogs.ShowEditor(new ProtocolEditorViewModel(_currentDef, ApplyProtocol, _dialogs));
         });
         ShowHelp = new RelayCommand(() => _dialogs?.ShowHelp());
+        OpenUpgrade = new RelayCommand(() =>
+        {
+            if (_dialogs is null) return;
+            var transport = Connection.Transport;
+            if (transport is null || !transport.IsOpen) { Log.AddError("固件升级需要先连接串口"); return; }
+            var runner = new UpgradeRunner(_engine, _dispatcher, transport,
+                frame => Log.AddTx(frame, _engine.Decode(frame)));
+            _dialogs.ShowUpgrade(new UpgradeViewModel(_dialogs, runner));
+        });
     }
 
     // Hot-swap the running protocol: new engine + dispatcher, re-bind transport

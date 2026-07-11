@@ -24,8 +24,11 @@ public sealed class DialogService : IDialogService
         return dlg.ShowDialog() == true ? dlg.FileName : null;
     }
 
-    // Placeholder — real impl (UpgradeView window + firmware file dialog) wired in
-    // the integration task once UpgradeView exists.
-    public void ShowUpgrade(UpgradeViewModel vm) => throw new NotImplementedException();
-    public string? PickFirmwarePath() => throw new NotImplementedException();
+    public void ShowUpgrade(UpgradeViewModel vm) => new UpgradeView { DataContext = vm }.Show();
+
+    public string? PickFirmwarePath()
+    {
+        var dlg = new OpenFileDialog { Filter = "固件镜像 (*.bin;*.hex)|*.bin;*.hex|所有文件 (*.*)|*.*", Title = "选择固件文件" };
+        return dlg.ShowDialog() == true ? dlg.FileName : null;
+    }
 }

@@ -12,6 +12,7 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button Content="📖 使用说明" Command="{Binding ShowHelp}" Margin="4,0"/>
                     <Button Content="✎ 编辑协议" Command="{Binding OpenEditor}" Margin="4,0"/>
+                    <Button Content="⬆ 固件升级" Command="{Binding OpenUpgrade}" Margin="4,0"/>
                 </StackPanel>
             </Grid>
         </Border>
