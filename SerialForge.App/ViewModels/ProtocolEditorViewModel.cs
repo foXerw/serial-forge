@@ -53,7 +53,7 @@ public sealed partial class ProtocolEditorViewModel : ViewModelBase
         _dialogs = dialogs;
         Apply = new RelayCommand(DoApply);
         Open = new RelayCommand(DoOpen);
-        SaveAs = new RelayCommand(DoSaveAs, () => true);
+        SaveAs = new RelayCommand(DoSaveAs);
         AddLayoutField = new RelayCommand(DoAddLayoutField);
         RemoveLayoutField = new RelayCommand<LayoutFieldViewModel>(DoRemoveLayoutField);
         MoveLayoutFieldUp = new RelayCommand<LayoutFieldViewModel>(DoMoveLayoutFieldUp);
@@ -92,7 +92,7 @@ public sealed partial class ProtocolEditorViewModel : ViewModelBase
             SplitHex(Preamble),
             string.IsNullOrWhiteSpace(LengthField) ? null : LengthField.Trim(),
             FrameTimeoutMs, null, null);
-        var layout = LayoutFields.Select(f => f.ToFieldDef(DefaultByteOrder)).ToArray();
+        var layout = LayoutFields.Select(f => f.ToFieldDef()).ToArray();
         var commands = Commands.Select(c => c.ToDef()).ToArray();
         return new ProtocolDefinition(Name, Version, DefaultByteOrder, framing, layout, commands);
     }

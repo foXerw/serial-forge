@@ -26,7 +26,7 @@ public sealed partial class LayoutFieldViewModel : ViewModelBase
         if (f.Compute is { } c) Compute = new ComputeEditorViewModel(c);
     }
 
-    public FieldDef ToFieldDef(ByteOrder defaultOrder)
+    public FieldDef ToFieldDef()
     {
         ComputeSpec? compute = Kind == FieldKind.Computed ? Compute.ToComputeSpec() : null;
         if (compute is { Algo: "length" })

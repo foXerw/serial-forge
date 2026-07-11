@@ -65,7 +65,7 @@ public class EditorViewModelsTest
     {
         var vm = new LayoutFieldViewModel
         { Kind = FieldKind.Literal, Codec = CodecType.Bytes, LiteralValue = "AA 55" };
-        var def = vm.ToFieldDef(ByteOrder.Little);
+        var def = vm.ToFieldDef();
         Assert.Equal(new[] { "0xaa", "0x55" }, def.LiteralValue);
     }
 
@@ -76,7 +76,7 @@ public class EditorViewModelsTest
         { Name = "len", Kind = FieldKind.Computed, Codec = CodecType.U16 };
         vm.Compute.Algo = "length";
         vm.Compute.Counts = "payload";
-        var def = vm.ToFieldDef(ByteOrder.Little);
+        var def = vm.ToFieldDef();
         Assert.Equal(2, def.Compute!.Params!["width"].GetInt32());
     }
 

@@ -59,14 +59,14 @@ public static class ProtocolSaver
         if (c.Counts is not null) dto["counts"] = c.Counts;
         if (c.Offset != 0) dto["offset"] = c.Offset;
         if (c.From is not null || c.To is not null) dto["over"] = new { from = c.From, to = c.To };
-        if (c.Params is not null && c.Params.Count > 0) dto["params"] = FlattenParams(c.Params);
+        if (c.Params is not null && c.Params.Count > 0) dto["params"] = CopyParams(c.Params);
         return dto;
     }
 
-    // Preserve each param's native JSON kind (bool/number/string) so a saved
-    // protocol reloads and re-encodes identically — LengthAlgorithm reads width
-    // via GetInt32(), which throws if width were saved as a quoted string.
-    private static Dictionary<string, JsonElement> FlattenParams(Dictionary<string, JsonElement> p)
+    // Copy the params dict so each JsonElement serializes as its native JSON kind
+    // (bool/number/string) — LengthAlgorithm reads width via GetInt32(), which
+    // throws if width were saved as a quoted string.
+    private static Dictionary<string, JsonElement> CopyParams(Dictionary<string, JsonElement> p)
         => p.ToDictionary(kv => kv.Key, kv => kv.Value);
 
     private static object CommandDto(CommandDef c) => new
