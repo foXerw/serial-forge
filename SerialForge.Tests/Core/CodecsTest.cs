@@ -45,6 +45,17 @@ public class CodecsTest
         Assert.Equal(new byte[] { 0x41, 0x42 }, bytes);
     }
 
+    [Theory]
+    [InlineData(CodecType.U8, 0x100)]
+    [InlineData(CodecType.U16, 0x1_0000)]
+    [InlineData(CodecType.U32, 0x1_0000_0000UL)]
+    public void UInt_encode_over_field_width_throws(CodecType type, ulong over)
+    {
+        var codec = _r.Get(type);
+        var size = codec.FixedSize!.Value;
+        Assert.Throws<OverflowException>(() => codec.Encode(over, size, ByteOrder.Little));
+    }
+
     [Fact]
     public void Enum_decodes_unknown_as_raw()
     {

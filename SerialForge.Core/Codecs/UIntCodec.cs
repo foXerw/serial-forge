@@ -27,6 +27,10 @@ public sealed class UIntCodec : ICodec
             _ => Convert.ToUInt64(value)
         };
         int size = FixedSize!.Value;
+        // Reject values that exceed the field width instead of silently
+        // truncating the high bytes — spec §8 wants encode-time overflow surfaced.
+        if (v >> (8 * size) != 0)
+            throw new OverflowException($"value 0x{v:X} overflows {8 * size}-bit field");
         var bytes = new byte[size];
         for (int i = 0; i < size; i++)
             bytes[i] = (byte)(v >> (8 * i));

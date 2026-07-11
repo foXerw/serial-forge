@@ -1,6 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <InternalsVisibleTo Include="SerialForge.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SerialForge.Core\SerialForge.Core.csproj" />
   </ItemGroup>
 

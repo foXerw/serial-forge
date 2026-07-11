@@ -3,12 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:SerialForge.App.ViewModels">
     <StackPanel Orientation="Horizontal" Margin="4">
-        <TextBlock Text="Port:" VerticalAlignment="Center" Margin="2"/>
+        <TextBlock Text="端口：" VerticalAlignment="Center" Margin="2"/>
         <ComboBox ItemsSource="{Binding PortNames}" SelectedItem="{Binding PortName}" Width="100" Margin="2"/>
-        <TextBlock Text="Baud:" VerticalAlignment="Center" Margin="8,2,2,2"/>
+        <TextBlock Text="波特率：" VerticalAlignment="Center" Margin="8,2,2,2"/>
         <ComboBox ItemsSource="{Binding BaudRates}" SelectedItem="{Binding BaudRate}" Width="90" Margin="2"/>
-        <Button Content="Connect" Command="{Binding Connect}" Margin="8,2,2,2"/>
-        <Button Content="Disconnect" Command="{Binding Disconnect}" Margin="2"/>
+        <Button Content="连接" Command="{Binding Connect}" Margin="8,2,2,2"/>
+        <Button Content="断开" Command="{Binding Disconnect}" Margin="2"/>
         <TextBlock Text="{Binding Status}" VerticalAlignment="Center" Margin="12,2,2,2"/>
     </StackPanel>
 </UserControl>

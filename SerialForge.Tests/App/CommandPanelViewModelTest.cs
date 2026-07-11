@@ -38,4 +38,34 @@ public class CommandPanelViewModelTest
         Assert.Equal(0xAA, sent![0]);
         Assert.Equal(0x05, sent[4]); // cmd fixed
     }
+
+    [Fact]
+    public void Send_surfaces_encode_error_and_does_not_invoke_sender()
+    {
+        var def = Def();
+        var engine = new ProtocolEngine(def);
+        byte[]? sent = null;
+        string? error = null;
+        var vm = new CommandPanelViewModel(engine, b => sent = b, msg => error = msg);
+        vm.Load(def);
+        vm.SelectedCommand = vm.Commands[1]; // writeConfig: id(u8), value(u16)
+        vm.Fields[0].Value = "0x1FF";        // overflows u8 -> encode throws
+
+        vm.Send.Execute(null);
+
+        Assert.Null(sent);
+        Assert.NotNull(error);
+        Assert.Contains("编码失败", error);
+    }
+
+    [Fact]
+    public void Send_can_execute_only_when_command_selected()
+    {
+        var vm = new CommandPanelViewModel(new ProtocolEngine(Def()), _ => { });
+        vm.Load(Def());
+        vm.SelectedCommand = null;
+        Assert.False(vm.Send.CanExecute(null));
+        vm.SelectedCommand = vm.Commands[0];
+        Assert.True(vm.Send.CanExecute(null));
+    }
 }

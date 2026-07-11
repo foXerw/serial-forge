@@ -37,11 +37,20 @@ public sealed class SerialTransport : ITransport
             try
             {
                 int n = _port.Read(buf, 0, buf.Length);
-                if (n > 0) BytesReceived?.Invoke(this, buf[..n]);
+                if (n > 0) RaiseBytesReceived(buf[..n]);
             }
             catch (IOException) { break; }
             catch (InvalidOperationException) { break; }
         }
+    }
+
+    // Dispatches received bytes to subscribers. Isolated from the read loop so a
+    // buggy handler (throws) cannot kill the reader thread — the tool must keep
+    // draining the port even if a subscriber misbehaves (spec §8 robustness).
+    internal void RaiseBytesReceived(byte[] data)
+    {
+        try { BytesReceived?.Invoke(this, data); }
+        catch { /* swallow: never let a subscriber fault the read loop */ }
     }
 
     public void Write(byte[] data)

@@ -3,10 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <DockPanel Margin="4">
         <DockPanel DockPanel.Dock="Top" Margin="2">
-            <TextBlock Text="Command:" VerticalAlignment="Center"/>
+            <TextBlock Text="命令：" VerticalAlignment="Center"/>
             <ComboBox ItemsSource="{Binding Commands}" DisplayMemberPath="Title"
                       SelectedItem="{Binding SelectedCommand}" Margin="8,0,0,0" MinWidth="200"/>
-            <Button Content="Send" Command="{Binding Send}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
+            <Button Content="发送" Command="{Binding Send}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
         </DockPanel>
         <ItemsControl ItemsSource="{Binding Fields}">
             <ItemsControl.ItemTemplate>

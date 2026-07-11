@@ -15,6 +15,8 @@ public partial class CommandPanelViewModel : ViewModelBase
 {
     private readonly ProtocolEngine _engine;
     private readonly Action<byte[]> _send;
+    private readonly Action<string>? _onError;
+    private readonly RelayCommand _sendCommand;
     private ProtocolDefinition? _def;
 
     public ObservableCollection<CommandDef> Commands { get; } = new();
@@ -22,10 +24,15 @@ public partial class CommandPanelViewModel : ViewModelBase
 
     [ObservableProperty] private CommandDef? _selectedCommand;
 
-    public ICommand Send { get; }
+    public ICommand Send => _sendCommand;
 
-    public CommandPanelViewModel(ProtocolEngine engine, Action<byte[]> send) =>
-        (_engine, _send, Send) = (engine, send, new RelayCommand(DoSend));
+    public CommandPanelViewModel(ProtocolEngine engine, Action<byte[]> send, Action<string>? onError = null)
+    {
+        _engine = engine;
+        _send = send;
+        _onError = onError;
+        _sendCommand = new RelayCommand(DoSend, () => SelectedCommand is not null);
+    }
 
     public void Load(ProtocolDefinition def)
     {
@@ -38,6 +45,7 @@ public partial class CommandPanelViewModel : ViewModelBase
     // Source generator emits the call site for this when SelectedCommand changes.
     partial void OnSelectedCommandChanged(CommandDef? value)
     {
+        _sendCommand.NotifyCanExecuteChanged();
         Fields.Clear();
         if (value is null || _def is null) return;
         foreach (var pf in value.PayloadFields)
@@ -47,22 +55,25 @@ public partial class CommandPanelViewModel : ViewModelBase
     private void DoSend()
     {
         if (_def is null || SelectedCommand is null) return;
-        var inst = new CommandInstance { Command = SelectedCommand };
-        foreach (var fe in Fields)
-        {
-            var pf = SelectedCommand.PayloadFields.First(p => p.Name == fe.Name);
-            inst.PayloadValues[fe.Name] = ParseValue(fe.Value, pf.Codec);
-        }
+        byte[] frame;
         try
         {
-            var frame = _engine.Encode(inst);
-            _send(frame);
+            var inst = new CommandInstance { Command = SelectedCommand };
+            foreach (var fe in Fields)
+            {
+                var pf = SelectedCommand.PayloadFields.First(p => p.Name == fe.Name);
+                inst.PayloadValues[fe.Name] = ParseValue(fe.Value, pf.Codec);
+            }
+            frame = _engine.Encode(inst);
         }
         catch (Exception ex)
         {
-            // Surface encode errors to the log (wired in Task 17). For now, no-op on failure.
-            System.Diagnostics.Debug.WriteLine("encode failed: " + ex.Message);
+            // Bad user input (parse/overflow) or encode failure: surface to the log,
+            // send nothing over the wire (spec §8).
+            _onError?.Invoke("编码失败：" + ex.Message);
+            return;
         }
+        _send(frame);
     }
 
     // Numeric fields parse to ulong (UIntCodec accepts ulong directly); hex is

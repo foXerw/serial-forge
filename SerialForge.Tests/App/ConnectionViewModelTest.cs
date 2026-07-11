@@ -11,7 +11,7 @@ public class ConnectionViewModelTest
         var vm = new ConnectionViewModel(_ => new InMemoryTransport());
         vm.PortName = "COM1"; vm.BaudRate = 115200;
         vm.Connect.Execute(null);
-        Assert.Equal("Connected", vm.Status);
+        Assert.Equal("已连接", vm.Status);
         Assert.True(vm.IsConnected);
     }
 
@@ -22,6 +22,6 @@ public class ConnectionViewModelTest
         vm.PortName = "COM1";
         vm.Connect.Execute(null);
         vm.Disconnect.Execute(null);
-        Assert.Equal("Disconnected", vm.Status);
+        Assert.Equal("未连接", vm.Status);
     }
 }

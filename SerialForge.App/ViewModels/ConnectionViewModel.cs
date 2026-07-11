@@ -17,7 +17,7 @@ public partial class ConnectionViewModel : ViewModelBase
 
     [ObservableProperty] private string _portName = "COM1";
     [ObservableProperty] private int _baudRate = 115200;
-    [ObservableProperty] private string _status = "Disconnected";
+    [ObservableProperty] private string _status = "未连接";
     [ObservableProperty] private bool _isConnected;
 
     public ITransport? Transport => _transport;
@@ -43,21 +43,21 @@ public partial class ConnectionViewModel : ViewModelBase
         try
         {
             _transport.Open();
-            Status = "Connected";
+            Status = "已连接";
             IsConnected = true;
             // The live transport changed: notify so MainViewModel re-subscribes
             // BytesReceived on the new instance. IsConnected alone is not enough
             // (reconnecting while already connected never toggles IsConnected).
             OnPropertyChanged(nameof(Transport));
         }
-        catch (Exception ex) { Status = "Error: " + ex.Message; }
+        catch (Exception ex) { Status = "错误：" + ex.Message; }
     }
 
     private void DoDisconnect()
     {
         _transport?.Dispose();   // release the COM port
         _transport = null;
-        Status = "Disconnected";
+        Status = "未连接";
         IsConnected = false;
         OnPropertyChanged(nameof(Transport));
     }
