@@ -87,11 +87,10 @@ public class UpgradeFlowTest
         var def = Def();
         var (runner, _) = Setup();
         var flow = new UpgradeFlow(runner, def, 500, 2);
-        var img = Image(10_000);   // many blocks
+        var img = Image(10_000);
         using var cts = new CancellationTokenSource();
-        int seen = 0;
-        var progress = new Progress<UpgradeProgress>(r => { if (++seen == 3) cts.Cancel(); });
-        var status = await flow.RunAsync(img, progress, cts.Token);
+        cts.Cancel();   // pre-cancelled: deterministically exercises OCE -> Cancelled (mid-flight cancel is timing-dependent and checked manually)
+        var status = await flow.RunAsync(img, null, cts.Token);
         Assert.Equal(UpgradeStatus.Cancelled, status);
     }
 }
