@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using CommunityToolkit.Mvvm.Input;
 using SerialForge.Core.Models;
 
 namespace SerialForge.App.ViewModels;
@@ -22,6 +23,9 @@ public partial class LogViewModel : ViewModelBase
     public LogViewModel() : this(5000) { }
     public LogViewModel(int maxEntries) : this(maxEntries, () => DateTime.Now) { }
     public LogViewModel(int maxEntries, Func<DateTime> clock) => (_maxEntries, _clock) = (maxEntries, clock);
+
+    [RelayCommand]
+    private void Clear() => Entries.Clear();
 
     public void AddTx(byte[] frame) => Append("TX", frame, detail: null, error: false);
 

@@ -6,6 +6,17 @@ namespace SerialForge.Tests.App;
 public class LogViewModelTest
 {
     [Fact]
+    public void Clear_empties_entries()
+    {
+        var vm = new LogViewModel();
+        vm.AddTx(new byte[] { 0xAA });
+        vm.AddRx(new DecodedFrame(Array.Empty<DecodedField>(), new byte[] { 0x01 }, null));
+        Assert.Equal(2, vm.Entries.Count);
+        vm.ClearCommand.Execute(null);
+        Assert.Empty(vm.Entries);
+    }
+
+    [Fact]
     public void AddTx_and_AddRx_append_entries_with_direction_and_hex()
     {
         var vm = new LogViewModel();
