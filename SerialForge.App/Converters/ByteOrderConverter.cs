@@ -8,6 +8,8 @@ namespace SerialForge.App.Converters;
 public sealed class ByteOrderConverter : IValueConverter
 {
     public static readonly string[] Options = { "默认", "小端", "大端" };
+    // For non-nullable byte-order (e.g. protocol DefaultByteOrder) — no "默认".
+    public static readonly string[] OptionsFixed = { "小端", "大端" };
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         => value is ByteOrder.Big ? "大端" : value is ByteOrder.Little ? "小端" : "默认";
