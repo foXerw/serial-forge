@@ -54,7 +54,7 @@ public partial class MainViewModel : ViewModelBase
             try { t.Write(frame); }
             catch (Exception ex) { UiDispatcher.Marshal(() => System.Diagnostics.Debug.WriteLine("write failed: " + ex.Message)); }
         }
-        CommandPanel = new CommandPanelViewModel(_engine, Send);
+        CommandPanel = new CommandPanelViewModel(_engine, Send, msg => Log.AddError(msg));
         if (def is not null) CommandPanel.Load(def);
 
         Connection.PropertyChanged += (_, e) =>
