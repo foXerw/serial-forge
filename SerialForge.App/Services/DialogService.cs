@@ -23,4 +23,9 @@ public sealed class DialogService : IDialogService
         var dlg = new SaveFileDialog { Filter = "协议 JSON (*.json)|*.json", Title = "另存为协议定义", AddExtension = true };
         return dlg.ShowDialog() == true ? dlg.FileName : null;
     }
+
+    // Placeholder — real impl (UpgradeView window + firmware file dialog) wired in
+    // the integration task once UpgradeView exists.
+    public void ShowUpgrade(UpgradeViewModel vm) => throw new NotImplementedException();
+    public string? PickFirmwarePath() => throw new NotImplementedException();
 }

@@ -8,6 +8,8 @@ public interface IDialogService
 {
     void ShowHelp();
     void ShowEditor(ProtocolEditorViewModel vm);
+    void ShowUpgrade(UpgradeViewModel vm);
     string? PickOpenJsonPath();
     string? PickSaveJsonPath();
+    string? PickFirmwarePath();
 }
