@@ -13,4 +13,6 @@ public interface IDialogService
     string? PickSaveJsonPath();
     string? PickFirmwarePath();
     string? PickSaveLogPath();
+    string? PickOpenSessionPath();
+    string? PickSaveSessionPath();
 }

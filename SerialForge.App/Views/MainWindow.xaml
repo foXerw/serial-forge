@@ -14,6 +14,8 @@
                     <Button Content="✎ 编辑协议" Command="{Binding OpenEditor}" Margin="4,0"/>
                     <Button Content="⬆ 固件升级" Command="{Binding OpenUpgrade}" Margin="4,0"/>
                     <Button Content="💾 导出日志" Command="{Binding ExportLog}" Margin="4,0"/>
+                    <Button Content="💾 保存会话" Command="{Binding SaveSession}" Margin="4,0"/>
+                    <Button Content="📂 加载会话" Command="{Binding LoadSession}" Margin="4,0"/>
                 </StackPanel>
             </Grid>
         </Border>

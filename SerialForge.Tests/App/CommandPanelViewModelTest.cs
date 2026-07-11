@@ -59,6 +59,28 @@ public class CommandPanelViewModelTest
     }
 
     [Fact]
+    public void Session_snapshot_and_restore_round_trips_field_values()
+    {
+        var def = Def();
+        var vm = new CommandPanelViewModel(new ProtocolEngine(def), _ => { });
+        vm.Load(def);
+        vm.SelectedCommand = vm.Commands[1];        // writeConfig: id, value
+        vm.Fields[0].Value = "0x10";
+        vm.Fields[1].Value = "0x1234";
+        var snap = vm.SnapshotSession();
+        var selected = vm.SelectedCommandName;
+
+        // A fresh VM (e.g. next launch) restores the session.
+        var vm2 = new CommandPanelViewModel(new ProtocolEngine(Def()), _ => { });
+        vm2.Load(Def());
+        vm2.RestoreSession(snap, selected);
+
+        Assert.Equal("writeConfig", vm2.SelectedCommand!.Name);
+        Assert.Equal("0x10", vm2.Fields[0].Value);
+        Assert.Equal("0x1234", vm2.Fields[1].Value);
+    }
+
+    [Fact]
     public void Field_values_persist_across_command_selection()
     {
         var def = Def();

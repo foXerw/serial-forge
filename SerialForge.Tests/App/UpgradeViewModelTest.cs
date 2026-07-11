@@ -25,6 +25,8 @@ public class UpgradeViewModelTest
         public string? PickSaveJsonPath() => null;
         public string? PickFirmwarePath() => string.IsNullOrEmpty(_path) ? null : _path;
         public string? PickSaveLogPath() => null;
+        public string? PickOpenSessionPath() => null;
+        public string? PickSaveSessionPath() => null;
     }
 
     [Fact]

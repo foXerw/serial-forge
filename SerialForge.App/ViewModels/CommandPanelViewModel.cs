@@ -21,6 +21,7 @@ public partial class CommandPanelViewModel : ViewModelBase
     // Per-command field values, so switching away and back doesn't lose edits.
     private readonly Dictionary<string, Dictionary<string, string>> _valueCache = new();
     private string? _currentCommandName;
+    private bool _suppressSnapshot;   // set during RestoreSession to avoid stale overwrite
 
     public ObservableCollection<CommandDef> Commands { get; } = new();
     public ObservableCollection<FieldEditorViewModel> Fields { get; } = new();
@@ -47,6 +48,37 @@ public partial class CommandPanelViewModel : ViewModelBase
         SelectedCommand = Commands.FirstOrDefault();
     }
 
+    // Session: snapshot ALL command field values (cache + the currently-shown
+    // command's Fields) so they can be serialized and restored later.
+    public Dictionary<string, Dictionary<string, string>> SnapshotSession()
+    {
+        var snap = new Dictionary<string, Dictionary<string, string>>(_valueCache);
+        if (_currentCommandName is not null)
+            snap[_currentCommandName] = Fields.ToDictionary(f => f.Name, f => f.Value);
+        return snap;
+    }
+
+    public string? SelectedCommandName => SelectedCommand?.Name;
+
+    // Restore a previously snapshotted session: load the per-command values, then
+    // re-select the command (which rebuilds its fields from the restored cache).
+    public void RestoreSession(Dictionary<string, Dictionary<string, string>> values, string? selectedCommandName)
+    {
+        _suppressSnapshot = true;
+        try
+        {
+            _valueCache.Clear();
+            foreach (var kv in values) _valueCache[kv.Key] = new Dictionary<string, string>(kv.Value);
+            SelectedCommand = null;
+            if (selectedCommandName is not null)
+            {
+                var cmd = Commands.FirstOrDefault(c => c.Name == selectedCommandName);
+                if (cmd is not null) SelectedCommand = cmd;
+            }
+        }
+        finally { _suppressSnapshot = false; }
+    }
+
     // Hot-swap: rebind to a rebuilt engine and reload commands from the new def.
     // Load() refreshes Commands + SelectedCommand and notifies Send CanExecute.
     public void Reload(ProtocolEngine engine, ProtocolDefinition def)
@@ -61,7 +93,7 @@ public partial class CommandPanelViewModel : ViewModelBase
         _sendCommand.NotifyCanExecuteChanged();
         // Snapshot the outgoing command's field values before rebuilding, so
         // switching away and back doesn't lose what the user typed.
-        if (_currentCommandName is not null)
+        if (!_suppressSnapshot && _currentCommandName is not null)
             _valueCache[_currentCommandName] = Fields.ToDictionary(f => f.Name, f => f.Value);
         Fields.Clear();
         if (value is null || _def is null) { _currentCommandName = null; return; }

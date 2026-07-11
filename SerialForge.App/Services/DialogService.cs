@@ -37,4 +37,16 @@ public sealed class DialogService : IDialogService
         var dlg = new SaveFileDialog { Filter = "日志文件 (*.txt;*.log)|*.txt;*.log", Title = "导出收发日志", AddExtension = true };
         return dlg.ShowDialog() == true ? dlg.FileName : null;
     }
+
+    public string? PickOpenSessionPath()
+    {
+        var dlg = new OpenFileDialog { Filter = "会话文件 (*.session.json)|*.session.json|所有文件 (*.*)|*.*", Title = "加载会话" };
+        return dlg.ShowDialog() == true ? dlg.FileName : null;
+    }
+
+    public string? PickSaveSessionPath()
+    {
+        var dlg = new SaveFileDialog { Filter = "会话文件 (*.session.json)|*.session.json", Title = "保存会话", AddExtension = true };
+        return dlg.ShowDialog() == true ? dlg.FileName : null;
+    }
 }

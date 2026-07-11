@@ -1,3 +1,5 @@
+using System.IO;
+using System.Text.Json;
 using System.Windows.Input;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -28,6 +30,8 @@ public partial class MainViewModel : ViewModelBase
     public ICommand ShowHelp { get; }
     public ICommand OpenUpgrade { get; }
     public ICommand ExportLog { get; }
+    public ICommand SaveSession { get; }
+    public ICommand LoadSession { get; }
 
     public MainViewModel() : this(new ProtocolCatalog().LoadFirst(), new DialogService())
     {
@@ -97,6 +101,33 @@ public partial class MainViewModel : ViewModelBase
             if (path is null) return;
             try { Log.Export(path); }
             catch (Exception ex) { Log.AddError("导出失败：" + ex.Message); }
+        });
+        SaveSession = new RelayCommand(() =>
+        {
+            var path = _dialogs?.PickSaveSessionPath();
+            if (path is null) return;
+            try
+            {
+                var session = new { selectedCommand = CommandPanel.SelectedCommandName, values = CommandPanel.SnapshotSession() };
+                File.WriteAllText(path, JsonSerializer.Serialize(session));
+            }
+            catch (Exception ex) { Log.AddError("保存会话失败：" + ex.Message); }
+        });
+        LoadSession = new RelayCommand(() =>
+        {
+            var path = _dialogs?.PickOpenSessionPath();
+            if (path is null) return;
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(path));
+                var values = doc.RootElement.TryGetProperty("values", out var vEl)
+                    ? vEl.Deserialize<Dictionary<string, Dictionary<string, string>>>() ?? new()
+                    : new Dictionary<string, Dictionary<string, string>>();
+                var selected = doc.RootElement.TryGetProperty("selectedCommand", out var sEl) && sEl.ValueKind == JsonValueKind.String
+                    ? sEl.GetString() : null;
+                CommandPanel.RestoreSession(values, selected);
+            }
+            catch (Exception ex) { Log.AddError("加载会话失败：" + ex.Message); }
         });
         OpenUpgrade = new RelayCommand(() =>
         {
