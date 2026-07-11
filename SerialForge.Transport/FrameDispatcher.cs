@@ -7,16 +7,21 @@ namespace SerialForge.Transport;
 // framed byte[] via the engine. Decoded frames are marshaled to a UI thread
 // through the injected Action<Action> before FrameDecoded is raised, so dispatch
 // is testable on any thread (tests pass a no-op marshal) and safe on a reader
-// thread in production. Await(predicate, timeout) is the Phase 2 seam: a
-// Task<DecodedFrame> that completes when a matching frame arrives.
+// thread in production. Await(predicate, timeout, ct) is the Phase 2 seam: a
+// Task<DecodedFrame> that completes when a matching frame arrives, times out, or
+// is cancelled — hardened so waiter registration, resolution, timeout, and
+// cancellation all touch _waiters on the marshal thread with no residue.
 public sealed class FrameDispatcher
 {
     private readonly ProtocolEngine _engine;
     private readonly Action<Action> _marshal;
     private readonly Framer _framer;
-    private readonly List<(Func<DecodedFrame, bool> pred, TaskCompletionSource<DecodedFrame> tcs)> _waiters = new();
+    private readonly List<Waiter> _waiters = new();
 
     public event EventHandler<DecodedFrame>? FrameDecoded;
+
+    // Test hook (InternalsVisibleTo): confirm timeout/cancel/match all sweep their entry.
+    internal int WaiterCount => _waiters.Count;
 
     public FrameDispatcher(ProtocolEngine engine, Action<Action> marshal)
     {
@@ -38,9 +43,11 @@ public sealed class FrameDispatcher
             // Iterate backward so RemoveAt doesn't shift unvisited indices.
             for (int i = _waiters.Count - 1; i >= 0; i--)
             {
-                if (_waiters[i].pred(decoded))
+                var w = _waiters[i];
+                if (w.Pred(decoded))
                 {
-                    _waiters[i].tcs.TrySetResult(decoded);
+                    w.Tcs.TrySetResult(decoded);
+                    w.Linked.Cancel();   // stop the timeout timer; Register no-ops on the completed TCS
                     _waiters.RemoveAt(i);
                 }
             }
@@ -48,11 +55,30 @@ public sealed class FrameDispatcher
     }
 
     /// <summary>Phase 2 seam: resolve when a frame matching <paramref name="pred"/> arrives.</summary>
-    public Task<DecodedFrame> Await(Func<DecodedFrame, bool> pred, int timeoutMs)
+    public Task<DecodedFrame> Await(Func<DecodedFrame, bool> pred, int timeoutMs, CancellationToken ct)
     {
         var tcs = new TaskCompletionSource<DecodedFrame>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _waiters.Add((pred, tcs));
-        _ = Task.Delay(timeoutMs).ContinueWith(_ => tcs.TrySetException(new TimeoutException("await timed out")));
+        var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        linked.CancelAfter(timeoutMs);
+        var waiter = new Waiter(pred, tcs, linked);
+        _marshal(() => _waiters.Add(waiter));   // register on the same thread that iterates _waiters
+        linked.Token.Register(() =>
+        {
+            if (tcs.Task.IsCompleted) { linked.Dispose(); return; }   // matched first
+            if (ct.IsCancellationRequested) tcs.TrySetCanceled(ct);
+            else tcs.TrySetException(new TimeoutException("await timed out"));
+            _marshal(() => _waiters.Remove(waiter));
+            linked.Dispose();
+        });
         return tcs.Task;
+    }
+
+    private sealed class Waiter
+    {
+        public readonly Func<DecodedFrame, bool> Pred;
+        public readonly TaskCompletionSource<DecodedFrame> Tcs;
+        public readonly CancellationTokenSource Linked;
+        public Waiter(Func<DecodedFrame, bool> pred, TaskCompletionSource<DecodedFrame> tcs, CancellationTokenSource linked)
+        { Pred = pred; Tcs = tcs; Linked = linked; }
     }
 }
