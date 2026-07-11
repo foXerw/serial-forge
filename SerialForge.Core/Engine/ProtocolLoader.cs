@@ -40,7 +40,6 @@ public static class ProtocolLoader
             dto.Framing.End);
 
         var layout = dto.Layout!.Select(ToFieldDef).ToArray();
-        var names = layout.Select(f => f.Name).ToHashSet();
         var commands = dto.Commands!.Select(ToCommandDef).ToArray();
 
         var def = new ProtocolDefinition(dto.Name!, dto.Version!, order, framing, layout, commands);

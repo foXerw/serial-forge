@@ -35,9 +35,10 @@ public class ValidateTest
     public void Compute_over_unknown_field_throws()
     {
         var d = Def();
-        var crc = Array.Find(d.Layout, f => f.Compute is not null);
-        var bad = crc with { Compute = crc.Compute! with { To = "no_such_field" } };
-        var layout = d.Layout.Select(f => f == crc ? bad : f).ToArray();
+        var computed = Array.Find(d.Layout, f => f.Compute is not null);
+        Assert.NotNull(computed);
+        var bad = computed! with { Compute = computed!.Compute! with { To = "no_such_field" } };
+        var layout = d.Layout.Select(f => f == computed ? bad : f).ToArray();
         Assert.Throws<ProtocolException>(() => ProtocolLoader.Validate(d with { Layout = layout }));
     }
 }
