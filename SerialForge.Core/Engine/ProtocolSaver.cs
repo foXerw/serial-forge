@@ -63,13 +63,11 @@ public static class ProtocolSaver
         return dto;
     }
 
-    // Flatten the JsonElement params to plain CLR values so the hex strings
-    // (poly/init/xorOut) survive as JSON strings with lowercase "0x" intact.
-    // JsonSerializer.Serialize(JsonElement, typeof(string)) is rejected by
-    // ValidateInputType, so read the value directly: string-kind -> GetString(),
-    // everything else -> GetRawText() (the documented fallback).
-    private static Dictionary<string, object?> FlattenParams(Dictionary<string, JsonElement> p)
-        => p.ToDictionary(kv => kv.Key, kv => (object?)(kv.Value.ValueKind == JsonValueKind.String ? kv.Value.GetString() : kv.Value.GetRawText()));
+    // Preserve each param's native JSON kind (bool/number/string) so a saved
+    // protocol reloads and re-encodes identically — LengthAlgorithm reads width
+    // via GetInt32(), which throws if width were saved as a quoted string.
+    private static Dictionary<string, JsonElement> FlattenParams(Dictionary<string, JsonElement> p)
+        => p.ToDictionary(kv => kv.Key, kv => kv.Value);
 
     private static object CommandDto(CommandDef c) => new
     {

@@ -38,4 +38,15 @@ public class ProtocolSaverTest
         // 能重新 Load 即证明 schema 合法
         ProtocolLoader.Load(json);
     }
+
+    [Fact]
+    public void Saved_protocol_round_trips_and_encodes_length_field_without_throwing()
+    {
+        var reloaded = ProtocolLoader.Load(ProtocolSaver.ToJson(Def()));
+        var engine = new ProtocolEngine(reloaded);
+        var inst = new CommandInstance { Command = reloaded.Commands[0] }; // readVersion (zero payload)
+        var frame = engine.Encode(inst);
+        // width must survive as a number so len encodes as 2 bytes; golden from Phase 1.
+        Assert.Equal(new byte[] { 0xAA, 0x55, 0x00, 0x00, 0x01, 0x99, 0xA4 }, frame);
+    }
 }
