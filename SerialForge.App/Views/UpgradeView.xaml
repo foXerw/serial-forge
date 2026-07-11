@@ -1,0 +1,29 @@
+<Window x:Class="SerialForge.App.Views.UpgradeView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="固件升级" Height="300" Width="480">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
+            <TextBlock Text="固件文件：" VerticalAlignment="Center"/>
+            <TextBox Text="{Binding FilePath}" Width="280" IsReadOnly="True" Margin="4,0"/>
+            <Button Content="选择…" Command="{Binding Start}" Padding="6,2"/>
+        </StackPanel>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
+            <TextBlock Text="块大小(B)：" VerticalAlignment="Center"/>
+            <TextBox Text="{Binding ChunkSize}" Width="60" Margin="4,0"/>
+        </StackPanel>
+        <ProgressBar Grid.Row="2" Height="22" Minimum="0" Maximum="{Binding TotalBlocks, TargetNullValue=1}" Value="{Binding SentBlocks}" Margin="0,4"/>
+        <TextBlock Grid.Row="3" Text="{Binding StatusText}" Margin="0,4"/>
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+            <Button Content="取消" Command="{Binding Cancel}" Width="80" Margin="4,0"/>
+            <Button Content="开始" Command="{Binding Start}" Width="80" Margin="4,0"/>
+        </StackPanel>
+    </Grid>
+</Window>
