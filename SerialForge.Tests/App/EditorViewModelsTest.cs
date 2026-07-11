@@ -93,4 +93,39 @@ public class EditorViewModelsTest
         Assert.Equal("0x05", back.Fix["cmd"]);
         Assert.Equal("id", back.PayloadFields[0].Name);
     }
+
+    private static ProtocolDefinition DemoDef() =>
+        SerialForge.Core.Engine.ProtocolLoader.Load(File.ReadAllText("Fixtures/demo-mcu.json"));
+
+    [Fact]
+    public void Editor_populate_then_build_round_trips_key_fields()
+    {
+        var vm = new ProtocolEditorViewModel(DemoDef(), _ => { }, null!);
+        Assert.Equal("demo-mcu", vm.Name);
+        Assert.Equal(5, vm.LayoutFields.Count);
+        Assert.Equal(2, vm.Commands.Count);
+        var built = vm.Build();              // 不抛即合法
+        Assert.Equal("demo-mcu", built.Name);
+    }
+
+    [Fact]
+    public void Apply_invokes_callback_only_when_valid()
+    {
+        ProtocolDefinition? applied = null;
+        var vm = new ProtocolEditorViewModel(DemoDef(), d => applied = d, null!);
+        vm.Apply.Execute(null);              // 草稿来自合法 demo → 应用成功
+        Assert.NotNull(applied);
+    }
+
+    [Fact]
+    public void Apply_with_invalid_draft_surfaces_error_and_does_not_apply()
+    {
+        ProtocolDefinition? applied = null;
+        var vm = new ProtocolEditorViewModel(DemoDef(), d => applied = d, null!);
+        // 破坏：把 crc 的 to 指向不存在的字段
+        vm.LayoutFields.First(f => f.Compute.IsCrc).Compute.To = "no_such";
+        vm.Apply.Execute(null);
+        Assert.Null(applied);
+        Assert.False(string.IsNullOrEmpty(vm.ErrorMessage));
+    }
 }
