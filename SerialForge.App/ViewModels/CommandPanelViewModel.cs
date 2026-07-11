@@ -13,7 +13,7 @@ namespace SerialForge.App.ViewModels;
 // framed bytes to the injected sender (wired to the transport in Task 17).
 public partial class CommandPanelViewModel : ViewModelBase
 {
-    private readonly ProtocolEngine _engine;
+    private ProtocolEngine _engine;
     private readonly Action<byte[]> _send;
     private readonly Action<string>? _onError;
     private readonly RelayCommand _sendCommand;
@@ -40,6 +40,14 @@ public partial class CommandPanelViewModel : ViewModelBase
         Commands.Clear();
         foreach (var c in def.Commands) Commands.Add(c);
         SelectedCommand = Commands.FirstOrDefault();
+    }
+
+    // Hot-swap: rebind to a rebuilt engine and reload commands from the new def.
+    // Load() refreshes Commands + SelectedCommand and notifies Send CanExecute.
+    public void Reload(ProtocolEngine engine, ProtocolDefinition def)
+    {
+        _engine = engine;
+        Load(def);
     }
 
     // Source generator emits the call site for this when SelectedCommand changes.
