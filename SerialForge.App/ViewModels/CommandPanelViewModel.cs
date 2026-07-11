@@ -18,6 +18,9 @@ public partial class CommandPanelViewModel : ViewModelBase
     private readonly Action<string>? _onError;
     private readonly RelayCommand _sendCommand;
     private ProtocolDefinition? _def;
+    // Per-command field values, so switching away and back doesn't lose edits.
+    private readonly Dictionary<string, Dictionary<string, string>> _valueCache = new();
+    private string? _currentCommandName;
 
     public ObservableCollection<CommandDef> Commands { get; } = new();
     public ObservableCollection<FieldEditorViewModel> Fields { get; } = new();
@@ -37,6 +40,8 @@ public partial class CommandPanelViewModel : ViewModelBase
     public void Load(ProtocolDefinition def)
     {
         _def = def;
+        _valueCache.Clear();          // don't leak values across protocols (hot-swap)
+        _currentCommandName = null;
         Commands.Clear();
         foreach (var c in def.Commands) Commands.Add(c);
         SelectedCommand = Commands.FirstOrDefault();
@@ -54,10 +59,18 @@ public partial class CommandPanelViewModel : ViewModelBase
     partial void OnSelectedCommandChanged(CommandDef? value)
     {
         _sendCommand.NotifyCanExecuteChanged();
+        // Snapshot the outgoing command's field values before rebuilding, so
+        // switching away and back doesn't lose what the user typed.
+        if (_currentCommandName is not null)
+            _valueCache[_currentCommandName] = Fields.ToDictionary(f => f.Name, f => f.Value);
         Fields.Clear();
-        if (value is null || _def is null) return;
+        if (value is null || _def is null) { _currentCommandName = null; return; }
+        _currentCommandName = value.Name;
         foreach (var pf in value.PayloadFields)
-            Fields.Add(new FieldEditorViewModel(pf.Name, pf.Codec.ToString(), pf.Default, isReadOnly: false));
+        {
+            var initial = (_valueCache.TryGetValue(value.Name, out var c) && c.TryGetValue(pf.Name, out var v)) ? v : pf.Default;
+            Fields.Add(new FieldEditorViewModel(pf.Name, pf.Codec.ToString(), initial, isReadOnly: false));
+        }
     }
 
     private void DoSend()

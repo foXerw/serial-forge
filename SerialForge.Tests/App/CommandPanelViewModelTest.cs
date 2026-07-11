@@ -59,6 +59,20 @@ public class CommandPanelViewModelTest
     }
 
     [Fact]
+    public void Field_values_persist_across_command_selection()
+    {
+        var def = Def();
+        var engine = new ProtocolEngine(def);
+        var vm = new CommandPanelViewModel(engine, _ => { });
+        vm.Load(def);
+        vm.SelectedCommand = vm.Commands[1];        // writeConfig: id, value
+        vm.Fields[0].Value = "0x10";                 // id
+        vm.SelectedCommand = vm.Commands[0];         // readVersion (away)
+        vm.SelectedCommand = vm.Commands[1];         // back to writeConfig
+        Assert.Equal("0x10", vm.Fields[0].Value);    // restored from cache
+    }
+
+    [Fact]
     public void Send_can_execute_only_when_command_selected()
     {
         var vm = new CommandPanelViewModel(new ProtocolEngine(Def()), _ => { });
