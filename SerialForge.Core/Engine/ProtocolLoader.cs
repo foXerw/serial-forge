@@ -43,8 +43,9 @@ public static class ProtocolLoader
         var names = layout.Select(f => f.Name).ToHashSet();
         var commands = dto.Commands!.Select(ToCommandDef).ToArray();
 
-        Validate(framing, layout, names);
-        return new ProtocolDefinition(dto.Name!, dto.Version!, order, framing, layout, commands);
+        var def = new ProtocolDefinition(dto.Name!, dto.Version!, order, framing, layout, commands);
+        Validate(def);
+        return def;
     }
 
     public static ProtocolDefinition LoadFile(string path) => Load(File.ReadAllText(path));
@@ -64,14 +65,21 @@ public static class ProtocolLoader
             p.ByteOrder == "big" ? ByteOrder.Big : p.ByteOrder == "little" ? ByteOrder.Little : null,
             p.Size, p.Default)).ToArray());
 
-    private static void Validate(FramingRule framing, FieldDef[] layout, HashSet<string> names)
+    public static void Validate(ProtocolDefinition def)
     {
+        if (string.IsNullOrWhiteSpace(def.Name)) throw new ProtocolException("missing 'name' in protocol");
+        if (string.IsNullOrWhiteSpace(def.Version)) throw new ProtocolException("missing 'version' in protocol");
+        if (def.Layout is null || def.Layout.Length == 0) throw new ProtocolException("missing 'layout' in protocol");
+        if (def.Commands is null) throw new ProtocolException("missing 'commands' in protocol");
+
+        var names = def.Layout.Select(f => f.Name).ToHashSet();
+        var framing = def.Framing;
         if (framing.Mode == FramingMode.LengthPrefix)
         {
             if (framing.LengthField is null || !names.Contains(framing.LengthField))
                 throw new ProtocolException($"framing.lengthField '{framing.LengthField}' not in layout");
         }
-        foreach (var f in layout)
+        foreach (var f in def.Layout)
         {
             if (f.Kind == FieldKind.Computed && f.Compute is { } c)
             {
