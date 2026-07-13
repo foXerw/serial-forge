@@ -36,4 +36,19 @@ public class BitFieldTest
         inst.PayloadValues["flags.type"] = 0x1FUL;   // 5 bits into 4-bit field
         Assert.Throws<ProtocolException>(() => engine.Encode(inst));
     }
+
+    [Fact]
+    public void Decode_emits_one_field_per_layout_bit_child()
+    {
+        var def = Def();
+        var engine = new ProtocolEngine(def);
+        var inst = new CommandInstance { Command = def.Commands[0] };
+        inst.PayloadValues["flags.type"] = 0x5UL;
+        inst.PayloadValues["flags.subtype"] = 0x3UL;
+        inst.PayloadValues["seq"] = 0x7UL;
+        var decoded = engine.Decode(engine.Encode(inst));
+        Assert.Null(decoded.Error);
+        Assert.Equal(1UL, decoded.Fields.First(f => f.Name == "status.type").Value);
+        Assert.Equal(0UL, decoded.Fields.First(f => f.Name == "status.subtype").Value);
+    }
 }

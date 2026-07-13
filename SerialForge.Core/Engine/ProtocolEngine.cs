@@ -272,6 +272,18 @@ public sealed class ProtocolEngine
                         return new DecodedFrame(fields.ToArray(), frame,
                             $"checksum mismatch on '{f.Name}': got {ToHexDisplay(actual)} expected {ToHexDisplay(expected)}");
                 }
+                else if (f.Kind == FieldKind.Value && f.Bits is { } dbits)
+                {
+                    byte bv = frame[offset];
+                    foreach (var child in dbits)
+                    {
+                        int shift = 8 - child.Offset - child.Width;
+                        int mask = (1 << child.Width) - 1;
+                        ulong cv = (ulong)((bv >> shift) & mask);
+                        object display = child.Enum is not null && child.Enum.TryGetValue(cv.ToString(), out var es) ? es : cv;
+                        fields.Add(new DecodedField($"{f.Name}.{child.Name}", display, offset, size, false));
+                    }
+                }
                 else // Value
                 {
                     var codec = f.Codec == CodecType.Enum ? new EnumCodec(CodecType.U8, f.EnumMap) : _codecs.Get(f.Codec);
