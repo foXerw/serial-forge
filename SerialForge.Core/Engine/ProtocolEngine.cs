@@ -64,6 +64,11 @@ public sealed class ProtocolEngine
         using var ms = new MemoryStream();
         foreach (var pf in inst.Command.PayloadFields)
         {
+            if (pf.Bits is { } pbits)
+            {
+                ms.Write(PackBits(pf.Name, pbits, inst.PayloadValues));
+                continue;
+            }
             var codec = _codecs.Get(pf.Codec);
             int size = pf.Size ?? codec.FixedSize ?? throw new ProtocolException($"payload field '{pf.Name}' needs size");
             var order = pf.ByteOrder ?? _def.DefaultByteOrder;
@@ -76,6 +81,8 @@ public sealed class ProtocolEngine
     private byte[]? EncodeField(FieldDef f, Dictionary<string, object> values)
     {
         if (f.Kind == FieldKind.Computed) return null; // resolved later
+        if (f.Kind == FieldKind.Value && f.Bits is { } lbits)
+            return PackBits(f.Name, lbits, values);
         var codec = f.Codec == CodecType.Enum ? new EnumCodec(CodecType.U8, f.EnumMap) : _codecs.Get(f.Codec);
         var order = f.ByteOrder ?? _def.DefaultByteOrder;
         return f.Kind switch
@@ -180,6 +187,37 @@ public sealed class ProtocolEngine
         }
         return ms.ToArray();
     }
+
+    // Pack bitfield children into one byte, MSB-first. Child values are read from
+    // `values` under the compound key "{group}.{child}"; missing => child.Default => 0.
+    private byte[] PackBits(string group, BitFieldDef[] bits, Dictionary<string, object> values)
+    {
+        byte b = 0;
+        foreach (var child in bits)
+        {
+            object? raw = values.TryGetValue($"{group}.{child.Name}", out var v) ? v : (object?)child.Default;
+            ulong n = ParseBitValue(raw);
+            int width = child.Width;
+            if (n >> width != 0)
+                throw new ProtocolException($"bit '{group}.{child.Name}' value 0x{n:X} overflows {width}-bit field");
+            int shift = 8 - child.Offset - width;
+            int mask = (1 << width) - 1;
+            b |= (byte)((n & (ulong)mask) << shift);
+        }
+        return new byte[] { b };
+    }
+
+    private static ulong ParseBitValue(object? val) => val switch
+    {
+        null => 0,
+        ulong u => u,
+        long l => (ulong)l,
+        int i => (ulong)i,
+        string s when s.StartsWith("0x", StringComparison.OrdinalIgnoreCase) => Convert.ToUInt64(s[2..], 16),
+        string s when string.IsNullOrWhiteSpace(s) => 0,
+        string s => Convert.ToUInt64(s, 10),
+        _ => Convert.ToUInt64(val)
+    };
 
     private static byte[] ApplyByteOrder(byte[] canonicalBigEndian, ByteOrder order)
     {
