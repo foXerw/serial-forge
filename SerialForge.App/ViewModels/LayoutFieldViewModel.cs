@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SerialForge.Core;
@@ -16,6 +17,8 @@ public sealed partial class LayoutFieldViewModel : ViewModelBase
     [ObservableProperty] private string _default = "";
 
     public ComputeEditorViewModel Compute { get; } = new();
+    public ObservableCollection<BitFieldEditorViewModel> Bits { get; } = new();
+    [ObservableProperty] private bool _isBitField;
 
     public LayoutFieldViewModel() { }
     public LayoutFieldViewModel(FieldDef f)
@@ -24,6 +27,7 @@ public sealed partial class LayoutFieldViewModel : ViewModelBase
         _literalValue = f.LiteralValue is null ? "" : string.Join(" ", f.LiteralValue);
         _default = f.Default ?? "";
         if (f.Compute is { } c) Compute = new ComputeEditorViewModel(c);
+        if (f.Bits is { } bs) { _isBitField = true; foreach (var b in bs) Bits.Add(new BitFieldEditorViewModel(b)); }
     }
 
     public FieldDef ToFieldDef()
@@ -35,11 +39,13 @@ public sealed partial class LayoutFieldViewModel : ViewModelBase
             p["width"] = JsonSerializer.SerializeToElement(CodecWidth(Codec));
             compute = compute with { Params = p };
         }
+        BitFieldDef[]? bits = IsBitField ? Bits.Select(b => b.ToDef()).ToArray() : null;
+        var codec = bits is null ? Codec : CodecType.U8;
         return new FieldDef(
-            Name, Kind, Codec, ByteOrder, Size,
+            Name, Kind, codec, ByteOrder, Size,
             Kind == FieldKind.Literal ? ParseLiteral(LiteralValue) : null,
             Kind == FieldKind.Value && Default != "" ? Default : null,
-            null, compute, null);
+            null, compute, bits);
     }
 
     private static string[]? ParseLiteral(string s)

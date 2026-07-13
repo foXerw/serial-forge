@@ -224,4 +224,30 @@ public class EditorViewModelsTest
         cmd.RemoveFix.Execute(last);
         Assert.Equal(n, cmd.Fix.Count);
     }
+
+    [Fact]
+    public void Layout_bitfield_round_trips_through_editor()
+    {
+        var src = new FieldDef("status", FieldKind.Value, CodecType.U8, null, null, null, null, null, null,
+            new[] { new BitFieldDef("type", 0, 4, null, "0x1"), new BitFieldDef("subtype", 4, 4, null, null) });
+        var vm = new LayoutFieldViewModel(src);
+        Assert.True(vm.IsBitField);
+        Assert.Equal(2, vm.Bits.Count);
+        var def = vm.ToFieldDef();
+        Assert.NotNull(def.Bits);
+        Assert.Equal(CodecType.U8, def.Codec);
+        Assert.Equal("0x1", def.Bits![0].Default);
+    }
+
+    [Fact]
+    public void Payload_bitfield_round_trips_through_editor()
+    {
+        var src = new PayloadFieldDef("flags", CodecType.U8, null, null, null,
+            new[] { new BitFieldDef("type", 0, 4, null, null) });
+        var vm = new PayloadFieldViewModel(src);
+        Assert.True(vm.IsBitField);
+        var def = vm.ToDef();
+        Assert.NotNull(def.Bits);
+        Assert.Equal(CodecType.U8, def.Codec);
+    }
 }
