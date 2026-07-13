@@ -1,4 +1,3 @@
-using System.Text;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -49,4 +48,13 @@ public sealed partial class RawSendViewModel : ViewModelBase
         TextEncoding.Gbk => System.Text.Encoding.GetEncoding("GBK").GetBytes(text),
         _ => throw new ArgumentOutOfRangeException(nameof(enc))
     };
+}
+
+public static class RawSendModes
+{
+    public static System.Collections.Generic.List<RawSendMode> All { get; } = new() { RawSendMode.Hex, RawSendMode.Text };
+}
+public static class TextEncodings
+{
+    public static System.Collections.Generic.List<TextEncoding> All { get; } = new() { TextEncoding.Ascii, TextEncoding.Utf8, TextEncoding.Gbk };
 }
