@@ -51,4 +51,28 @@ public class BitFieldTest
         Assert.Equal(1UL, decoded.Fields.First(f => f.Name == "status.type").Value);
         Assert.Equal(0UL, decoded.Fields.First(f => f.Name == "status.subtype").Value);
     }
+
+    [Fact]
+    public void Decode_layout_bitfield_child_renders_enum_name()
+    {
+        var json = """
+        {
+          "name": "enum-bits", "version": "1.0", "defaultByteOrder": "little",
+          "framing": { "mode": "length-prefix", "preamble": ["0xAA"], "lengthField": "len", "frameTimeoutMs": 50 },
+          "layout": [
+            { "name": "preamble", "kind": "literal", "codec": "bytes", "value": ["0xAA"] },
+            { "name": "len", "kind": "computed", "codec": "u8", "compute": { "algo": "length", "counts": ["payload"], "params": { "width": 1 } } },
+            { "name": "status", "kind": "value", "codec": "u8",
+              "bits": [ { "name": "type", "offset": 0, "width": 4, "default": "0x1", "enum": { "1": "run" } } ] },
+            { "name": "payload", "kind": "value", "codec": "bytes" }
+          ],
+          "commands": [ { "name": "ping", "title": "Ping", "fix": {}, "payloadFields": [] } ]
+        }
+        """;
+        var def = ProtocolLoader.Load(json);
+        var engine = new ProtocolEngine(def);
+        var decoded = engine.Decode(engine.Encode(new CommandInstance { Command = def.Commands[0] }));
+        Assert.Null(decoded.Error);
+        Assert.Equal("run", decoded.Fields.First(f => f.Name == "status.type").Value);
+    }
 }

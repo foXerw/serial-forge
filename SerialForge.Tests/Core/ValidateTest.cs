@@ -74,4 +74,14 @@ public class ValidateTest
         var layout = def.Layout.Select(f => f == status ? bad : f).ToArray();
         Assert.Throws<ProtocolException>(() => ProtocolLoader.Validate(def with { Layout = layout }));
     }
+
+    [Fact]
+    public void Bitfield_on_literal_field_rejected()
+    {
+        var def = ProtocolLoader.Load(File.ReadAllText("Fixtures/demo-bits.json"));
+        var status = def.Layout.First(f => f.Name == "status");
+        var bad = status with { Kind = FieldKind.Literal, LiteralValue = new[] { "0x00" }, Bits = status.Bits };
+        var layout = def.Layout.Select(f => f == status ? bad : f).ToArray();
+        Assert.Throws<ProtocolException>(() => ProtocolLoader.Validate(def with { Layout = layout }));
+    }
 }

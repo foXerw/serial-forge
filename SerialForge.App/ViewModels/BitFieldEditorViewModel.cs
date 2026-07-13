@@ -3,7 +3,7 @@ using SerialForge.Core.Models;
 
 namespace SerialForge.App.ViewModels;
 
-// Edits one bit sub-field. Enum typed as "0:idle,1=run" (colon-separated pairs).
+// Edits one bit sub-field. Enum typed as "0:idle,1:run" (colon-separated pairs).
 public sealed partial class BitFieldEditorViewModel : ViewModelBase
 {
     [ObservableProperty] private string _name = "";

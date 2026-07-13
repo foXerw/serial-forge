@@ -127,10 +127,18 @@ public static class ProtocolLoader
             ranges.Add((b.Offset, b.Offset + b.Width));
             if (b.Default is { } d)
             {
-                ulong v = d.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
-                    ? Convert.ToUInt64(d[2..], 16) : Convert.ToUInt64(d, 10);
-                if (v >> b.Width != 0)
-                    throw new ProtocolException($"bit '{owner}.{b.Name}': default 0x{v:X} overflows {b.Width}-bit field");
+                try
+                {
+                    ulong v = d.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                        ? Convert.ToUInt64(d[2..], 16) : Convert.ToUInt64(d, 10);
+                    if (v >> b.Width != 0)
+                        throw new ProtocolException($"bit '{owner}.{b.Name}': default 0x{v:X} overflows {b.Width}-bit field");
+                }
+                catch (ProtocolException) { throw; }
+                catch (Exception)
+                {
+                    throw new ProtocolException($"bit '{owner}.{b.Name}': default '{d}' is not parseable");
+                }
             }
         }
         var sorted = ranges.OrderBy(x => x.Lo).ToList();

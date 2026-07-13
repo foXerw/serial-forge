@@ -34,6 +34,7 @@
             <TextBlock Text="当一个 u8 字段需要按位拆分（如高 4 位=类型、低 4 位=子类型），在字段上加 bits 子项。每个 bit 字段含 name、offset（0 = 最高位，即「前四位」）、width（位数）、可选 default 与 enum。" TextWrapping="Wrap" Margin="0,4"/>
             <TextBlock Text="示例：status(u8) 拆成 type(offset=0,width=4) 与 subtype(offset=4,width=4)，type=0x5、subtype=0x3 → 该字节为 0x53。" TextWrapping="Wrap" Margin="0,4" FontFamily="Consolas"/>
             <TextBlock Text="收包时日志会按子字段解析显示，如 status.type=5 | status.subtype=3。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="注：按子字段解析仅对布局（帧级）位域生效；负载位域在发送时打包，接收时按原始字节显示。" TextWrapping="Wrap" Margin="0,4"/>
 
             <!-- 5. 原始发送 -->
             <TextBlock Text="五、原始发送" FontWeight="Bold" FontSize="16" Margin="0,12,0,6"/>
