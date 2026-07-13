@@ -26,7 +26,12 @@
       "fix": { "cmd": "0x05" },
       "payloadFields": [
         { "name": "id",    "codec": "u8",  "default": "0" },
-        { "name": "value", "codec": "u16", "default": "0" }
+        { "name": "value", "codec": "u16", "default": "0" },
+        { "name": "flags", "codec": "u8",
+          "bits": [
+            { "name": "bank", "offset": 0, "width": 4, "default": "0x0" },
+            { "name": "mode", "offset": 4, "width": 4, "enum": { "0": "normal", "1": "boost" } }
+          ] }
       ] }
   ]
 }
