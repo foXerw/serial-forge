@@ -52,7 +52,7 @@ public static class ProtocolLoader
     private static FieldDef ToFieldDef(Dto.FieldDto f) => new(
         f.Name!, ParseEnum<FieldKind>(f.Kind!), ParseEnum<CodecType>(f.Codec!),
         f.ByteOrder == "big" ? ByteOrder.Big : f.ByteOrder == "little" ? ByteOrder.Little : null,
-        f.Size, f.Value, f.Default, f.Enum, ToCompute(f.Compute));
+        f.Size, f.Value, f.Default, f.Enum, ToCompute(f.Compute), null);
 
     private static ComputeSpec? ToCompute(Dto.ComputeDto? c) => c is null ? null : new(
         c.Algo!, c.Counts, c.Offset ?? 0, c.Over?.From, c.Over?.To, c.Params);
@@ -62,7 +62,7 @@ public static class ProtocolLoader
         (c.PayloadFields ?? Array.Empty<Dto.PayloadFieldDto>()).Select(p => new PayloadFieldDef(
             p.Name!, ParseEnum<CodecType>(p.Codec!),
             p.ByteOrder == "big" ? ByteOrder.Big : p.ByteOrder == "little" ? ByteOrder.Little : null,
-            p.Size, p.Default)).ToArray());
+            p.Size, p.Default, null)).ToArray());
 
     public static void Validate(ProtocolDefinition def)
     {

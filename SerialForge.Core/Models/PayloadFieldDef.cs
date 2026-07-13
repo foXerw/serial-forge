@@ -5,4 +5,5 @@ public sealed record PayloadFieldDef(
     CodecType Codec,
     ByteOrder? ByteOrder,
     int? Size,
-    string? Default);
+    string? Default,
+    BitFieldDef[]? Bits);

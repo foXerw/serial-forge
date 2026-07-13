@@ -11,7 +11,7 @@ public class ModelsTest
         var spec = new ComputeSpec("crc16", null, 0, "preamble", "payload", null);
         Assert.Equal("crc16", spec.Algo);
 
-        var field = new FieldDef("cmd", FieldKind.Value, CodecType.U8, null, null, null, null, null, null);
+        var field = new FieldDef("cmd", FieldKind.Value, CodecType.U8, null, null, null, null, null, null, null);
         Assert.Equal("cmd", field.Name);
         Assert.Equal(FieldKind.Value, field.Kind);
 

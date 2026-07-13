@@ -39,7 +39,7 @@ public sealed partial class LayoutFieldViewModel : ViewModelBase
             Name, Kind, Codec, ByteOrder, Size,
             Kind == FieldKind.Literal ? ParseLiteral(LiteralValue) : null,
             Kind == FieldKind.Value && Default != "" ? Default : null,
-            null, compute);
+            null, compute, null);
     }
 
     private static string[]? ParseLiteral(string s)

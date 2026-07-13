@@ -85,7 +85,7 @@ public class EditorViewModelsTest
     {
         var src = new CommandDef("writeConfig", "Write Config",
             new() { ["cmd"] = "0x05" },
-            new[] { new PayloadFieldDef("id", CodecType.U8, null, null, "0") });
+            new[] { new PayloadFieldDef("id", CodecType.U8, null, null, "0", null) });
         var vm = new CommandEditorViewModel(src);
         Assert.Equal("writeConfig", vm.Name);
         Assert.Single(vm.Fix);

@@ -9,4 +9,5 @@ public sealed record FieldDef(
     string[]? LiteralValue,   // for kind=Literal
     string? Default,          // for kind=Value
     Dictionary<string, string>? EnumMap,
-    ComputeSpec? Compute);
+    ComputeSpec? Compute,
+    BitFieldDef[]? Bits);     // non-null => this field is a 1-byte bitfield group

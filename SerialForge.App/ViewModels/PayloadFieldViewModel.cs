@@ -17,5 +17,5 @@ public sealed partial class PayloadFieldViewModel : ViewModelBase
     public PayloadFieldViewModel(string name, CodecType codec, ByteOrder? byteOrder, int? size, string? defaultValue)
     { _name = name; _codec = codec; _byteOrder = byteOrder; _size = size; _default = defaultValue ?? ""; }
 
-    public PayloadFieldDef ToDef() => new(Name, Codec, ByteOrder, Size, Default == "" ? null : Default);
+    public PayloadFieldDef ToDef() => new(Name, Codec, ByteOrder, Size, Default == "" ? null : Default, null);
 }
