@@ -41,4 +41,37 @@ public class ValidateTest
         var layout = d.Layout.Select(f => f == computed ? bad : f).ToArray();
         Assert.Throws<ProtocolException>(() => ProtocolLoader.Validate(d with { Layout = layout }));
     }
+
+    [Fact]
+    public void Bitfield_on_non_u8_codec_rejected()
+    {
+        var def = ProtocolLoader.Load(File.ReadAllText("Fixtures/demo-bits.json"));
+        var status = def.Layout.First(f => f.Name == "status");
+        var bad = status with { Codec = CodecType.U16 };
+        var layout = def.Layout.Select(f => f == status ? bad : f).ToArray();
+        Assert.Throws<ProtocolException>(() => ProtocolLoader.Validate(def with { Layout = layout }));
+    }
+
+    [Fact]
+    public void Bitfield_overlapping_ranges_rejected()
+    {
+        var def = ProtocolLoader.Load(File.ReadAllText("Fixtures/demo-bits.json"));
+        var status = def.Layout.First(f => f.Name == "status");
+        var overlap = status with
+        {
+            Bits = new[] { new BitFieldDef("a", 0, 5, null, null), new BitFieldDef("b", 3, 4, null, null) }
+        };
+        var layout = def.Layout.Select(f => f == status ? overlap : f).ToArray();
+        Assert.Throws<ProtocolException>(() => ProtocolLoader.Validate(def with { Layout = layout }));
+    }
+
+    [Fact]
+    public void Bitfield_out_of_range_offset_rejected()
+    {
+        var def = ProtocolLoader.Load(File.ReadAllText("Fixtures/demo-bits.json"));
+        var status = def.Layout.First(f => f.Name == "status");
+        var bad = status with { Bits = new[] { new BitFieldDef("a", 4, 5, null, null) } }; // 4+5>8
+        var layout = def.Layout.Select(f => f == status ? bad : f).ToArray();
+        Assert.Throws<ProtocolException>(() => ProtocolLoader.Validate(def with { Layout = layout }));
+    }
 }

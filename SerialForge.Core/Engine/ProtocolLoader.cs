@@ -83,6 +83,14 @@ public static class ProtocolLoader
         }
         foreach (var f in def.Layout)
         {
+            if (f.Bits is { } lbits)
+            {
+                if (f.Codec != CodecType.U8)
+                    throw new ProtocolException($"bitfield '{f.Name}' must use codec u8");
+                if (f.Kind != FieldKind.Value)
+                    throw new ProtocolException($"bitfield '{f.Name}' only allowed on value fields");
+                ValidateBits(f.Name, lbits);
+            }
             if (f.Kind == FieldKind.Computed && f.Compute is { } c)
             {
                 if (c.From is not null && !names.Contains(c.From))
@@ -94,6 +102,41 @@ public static class ProtocolLoader
                         if (!names.Contains(n)) throw new ProtocolException($"compute.counts '{n}' unknown (field {f.Name})");
             }
         }
+        foreach (var c in def.Commands)
+            foreach (var pf in c.PayloadFields)
+                if (pf.Bits is { } pbits)
+                {
+                    if (pf.Codec != CodecType.U8)
+                        throw new ProtocolException($"bitfield '{c.Name}.{pf.Name}' must use codec u8");
+                    ValidateBits($"{c.Name}.{pf.Name}", pbits);
+                }
+    }
+
+    // Validate a bitfield group: each child's offset/width must fit in 8 bits,
+    // names must be unique, defaults must fit the width, and ranges must not overlap.
+    private static void ValidateBits(string owner, BitFieldDef[] bits)
+    {
+        var ranges = new List<(int Lo, int Hi)>();
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var b in bits)
+        {
+            if (b.Width < 1 || b.Offset < 0 || b.Offset + b.Width > 8)
+                throw new ProtocolException($"bit '{owner}.{b.Name}': offset/width out of range (must stay within 8 bits)");
+            if (!names.Add(b.Name))
+                throw new ProtocolException($"bit '{owner}.{b.Name}': duplicate bit name");
+            ranges.Add((b.Offset, b.Offset + b.Width));
+            if (b.Default is { } d)
+            {
+                ulong v = d.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                    ? Convert.ToUInt64(d[2..], 16) : Convert.ToUInt64(d, 10);
+                if (v >> b.Width != 0)
+                    throw new ProtocolException($"bit '{owner}.{b.Name}': default 0x{v:X} overflows {b.Width}-bit field");
+            }
+        }
+        var sorted = ranges.OrderBy(x => x.Lo).ToList();
+        for (int i = 1; i < sorted.Count; i++)
+            if (sorted[i].Lo < sorted[i - 1].Hi)
+                throw new ProtocolException($"bit '{owner}': overlapping bit ranges");
     }
 
     // Hyphen-tolerant enum parse: JSON uses "length-prefix" but the enum is
