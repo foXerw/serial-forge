@@ -49,6 +49,7 @@ public class RawSendViewModelTest
     [Fact]
     public void Send_text_mode_encodes_gbk()
     {
+        System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
         byte[]? sent = null;
         var vm = new RawSendViewModel(b => sent = b) { Mode = RawSendMode.Text, Encoding = TextEncoding.Gbk };
         vm.Input = "A";
