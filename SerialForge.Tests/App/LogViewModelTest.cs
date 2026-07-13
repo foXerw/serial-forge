@@ -98,4 +98,23 @@ public class LogViewModelTest
         Assert.Contains("AA 55", text);
         Assert.Contains("boom", text);
     }
+
+    [Fact]
+    public void Ascii_renders_printable_and_dot_for_nonprintable()
+    {
+        var vm = new LogViewModel();
+        vm.AddTx(new byte[] { 0x41, 0x00, 0x7E, 0xFF });
+        Assert.Equal("A.~.", vm.Entries[0].Ascii);
+    }
+
+    [Fact]
+    public void Export_includes_ascii_column()
+    {
+        var vm = new LogViewModel(5000, () => new DateTime(2026, 7, 11, 12, 30, 45, 123));
+        vm.AddTx(new byte[] { 0x41, 0x42 });   // "AB"
+        var path = Path.Combine(Path.GetTempPath(), "log-" + Guid.NewGuid().ToString("N") + ".txt");
+        vm.Export(path);
+        var text = File.ReadAllText(path);
+        Assert.Contains("AB", text);
+    }
 }

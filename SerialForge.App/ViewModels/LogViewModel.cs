@@ -12,6 +12,7 @@ public sealed class LogEntry
     public DateTime Timestamp { get; init; }
     public string Direction { get; init; } = "";
     public string Hex { get; init; } = "";
+    public string Ascii { get; init; } = "";
     public string? Detail { get; init; }      // field breakdown or error
     public bool IsError { get; init; }
 }
@@ -82,17 +83,19 @@ public partial class LogViewModel : ViewModelBase
             Timestamp = _clock(),
             Direction = dir,
             Hex = string.Join(' ', frame.Select(b => b.ToString("X2"))),
+            Ascii = string.Concat(frame.Select(b => (b >= 0x20 && b <= 0x7E) ? (char)b : '.')),
             Detail = detail,
             IsError = error
         });
         while (Entries.Count > _maxEntries) Entries.RemoveAt(0);
     }
 
-    // Write the whole log (timestamp | dir | hex | detail per line) to a file.
+    // Write the whole log (timestamp | dir | hex | ascii | detail per line) to a file.
     public void Export(string path)
     {
         using var writer = new StreamWriter(path);
         foreach (var e in Entries)
-            writer.WriteLine($"{e.Timestamp:HH:mm:ss.fff} | {e.Direction} | {e.Hex}" + (e.Detail is null ? "" : " | " + e.Detail));
+            writer.WriteLine($"{e.Timestamp:HH:mm:ss.fff} | {e.Direction} | {e.Hex} | {e.Ascii}"
+                + (e.Detail is null ? "" : " | " + e.Detail));
     }
 }
