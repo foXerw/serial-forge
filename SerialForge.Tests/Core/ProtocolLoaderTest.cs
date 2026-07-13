@@ -50,4 +50,18 @@ public class ProtocolLoaderTest
         var ex = Assert.Throws<ProtocolException>(() => ProtocolLoader.Load(json));
         Assert.Contains("layout", ex.Message);
     }
+
+    [Fact]
+    public void Loads_bitfield_layout_and_payload()
+    {
+        var def = ProtocolLoader.Load(File.ReadAllText("Fixtures/demo-bits.json"));
+        var status = def.Layout.First(f => f.Name == "status");
+        Assert.NotNull(status.Bits);
+        Assert.Equal(2, status.Bits!.Length);
+        Assert.Equal(4, status.Bits[0].Width);
+        Assert.Equal("0x1", status.Bits[0].Default);
+        var flags = def.Commands[0].PayloadFields.First(p => p.Name == "flags");
+        Assert.NotNull(flags.Bits);
+        Assert.Equal(2, flags.Bits!.Length);
+    }
 }

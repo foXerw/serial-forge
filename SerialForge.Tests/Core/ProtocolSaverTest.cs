@@ -49,4 +49,16 @@ public class ProtocolSaverTest
         // width must survive as a number so len encodes as 2 bytes; golden from Phase 1.
         Assert.Equal(new byte[] { 0xAA, 0x55, 0x00, 0x00, 0x01, 0x99, 0xA4 }, frame);
     }
+
+    [Fact]
+    public void Bits_round_trip_through_saver()
+    {
+        var def = ProtocolLoader.Load(File.ReadAllText("Fixtures/demo-bits.json"));
+        var json = ProtocolSaver.ToJson(def);
+        var again = ProtocolLoader.Load(json);
+        var status = again.Layout.First(f => f.Name == "status");
+        Assert.Equal(2, status.Bits!.Length);
+        Assert.Equal("0x1", status.Bits[0].Default);
+        Assert.NotNull(again.Commands[0].PayloadFields.First(p => p.Name == "flags").Bits);
+    }
 }

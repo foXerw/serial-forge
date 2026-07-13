@@ -50,7 +50,19 @@ public static class ProtocolSaver
         if (f.Kind == FieldKind.Value && f.Default is not null) dto["default"] = f.Default;
         if (f.EnumMap is not null) dto["enum"] = f.EnumMap;
         if (f.Compute is { } c) dto["compute"] = ComputeDto(c);
+        if (f.Bits is { } bs) dto["bits"] = bs.Select(BitFieldDto).ToArray();
         return dto;
+    }
+
+    private static object BitFieldDto(BitFieldDef b)
+    {
+        var d = new Dictionary<string, object?>
+        {
+            ["name"] = b.Name, ["offset"] = b.Offset, ["width"] = b.Width
+        };
+        if (b.Enum is not null) d["enum"] = b.Enum;
+        if (b.Default is not null) d["default"] = b.Default;
+        return d;
     }
 
     private static object ComputeDto(ComputeSpec c)
@@ -74,15 +86,22 @@ public static class ProtocolSaver
         name = c.Name,
         title = c.Title,
         fix = c.Fix.Count == 0 ? null : c.Fix,
-        payloadFields = c.PayloadFields.Select(p => new
-        {
-            name = p.Name,
-            codec = CodecStr(p.Codec),
-            byteOrder = p.ByteOrder == null ? null : (p.ByteOrder == ByteOrder.Big ? "big" : "little"),
-            size = p.Size,
-            @default = p.Default
-        })
+        payloadFields = c.PayloadFields.Select(PayloadFieldDto)
     };
+
+    private static object PayloadFieldDto(PayloadFieldDef p)
+    {
+        var d = new Dictionary<string, object?>
+        {
+            ["name"] = p.Name,
+            ["codec"] = CodecStr(p.Codec),
+            ["byteOrder"] = p.ByteOrder == null ? null : (p.ByteOrder == ByteOrder.Big ? "big" : "little"),
+            ["size"] = p.Size,
+            ["default"] = p.Default
+        };
+        if (p.Bits is { } bs) d["bits"] = bs.Select(BitFieldDto).ToArray();
+        return d;
+    }
 
     private static string ModeStr(FramingMode m) => m switch
     {

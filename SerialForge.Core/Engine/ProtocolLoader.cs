@@ -52,17 +52,20 @@ public static class ProtocolLoader
     private static FieldDef ToFieldDef(Dto.FieldDto f) => new(
         f.Name!, ParseEnum<FieldKind>(f.Kind!), ParseEnum<CodecType>(f.Codec!),
         f.ByteOrder == "big" ? ByteOrder.Big : f.ByteOrder == "little" ? ByteOrder.Little : null,
-        f.Size, f.Value, f.Default, f.Enum, ToCompute(f.Compute), null);
+        f.Size, f.Value, f.Default, f.Enum, ToCompute(f.Compute), ToBits(f.Bits));
 
     private static ComputeSpec? ToCompute(Dto.ComputeDto? c) => c is null ? null : new(
         c.Algo!, c.Counts, c.Offset ?? 0, c.Over?.From, c.Over?.To, c.Params);
+
+    private static BitFieldDef[]? ToBits(Dto.BitFieldDto[]? arr) => arr is null ? null
+        : arr.Select(b => new BitFieldDef(b.Name!, b.Offset, b.Width, b.Enum, b.Default)).ToArray();
 
     private static CommandDef ToCommandDef(Dto.CommandDto c) => new(
         c.Name!, c.Title ?? c.Name!, c.Fix ?? new(),
         (c.PayloadFields ?? Array.Empty<Dto.PayloadFieldDto>()).Select(p => new PayloadFieldDef(
             p.Name!, ParseEnum<CodecType>(p.Codec!),
             p.ByteOrder == "big" ? ByteOrder.Big : p.ByteOrder == "little" ? ByteOrder.Little : null,
-            p.Size, p.Default, null)).ToArray());
+            p.Size, p.Default, ToBits(p.Bits))).ToArray());
 
     public static void Validate(ProtocolDefinition def)
     {
@@ -107,11 +110,12 @@ public static class ProtocolLoader
     {
         public sealed class ProtocolDto { public string? Name; public string? Version; public string? DefaultByteOrder; public FramingDto? Framing; public FieldDto[]? Layout; public CommandDto[]? Commands; }
         public sealed class FramingDto { public string? Mode; public string[]? Preamble; public string? LengthField; public int FrameTimeoutMs; public string[]? Start; public string[]? End; }
-        public sealed class FieldDto { public string? Name; public string? Kind; public string? Codec; public string? ByteOrder; public int? Size; public string[]? Value; public string? Default; public Dictionary<string,string>? Enum; public ComputeDto? Compute; }
+        public sealed class FieldDto { public string? Name; public string? Kind; public string? Codec; public string? ByteOrder; public int? Size; public string[]? Value; public string? Default; public Dictionary<string,string>? Enum; public ComputeDto? Compute; public BitFieldDto[]? Bits; }
         public sealed class ComputeDto { public string? Algo; public string[]? Counts; public int? Offset; public OverDto? Over; public Dictionary<string,JsonElement>? Params; }
         public sealed class OverDto { public string? From; public string? To; }
         public sealed class CommandDto { public string? Name; public string? Title; public Dictionary<string,string>? Fix; public PayloadFieldDto[]? PayloadFields; }
-        public sealed class PayloadFieldDto { public string? Name; public string? Codec; public string? ByteOrder; public int? Size; public string? Default; }
+        public sealed class PayloadFieldDto { public string? Name; public string? Codec; public string? ByteOrder; public int? Size; public string? Default; public BitFieldDto[]? Bits; }
+        public sealed class BitFieldDto { public string? Name; public int Offset; public int Width; public Dictionary<string,string>? Enum; public string? Default; }
     }
 #pragma warning restore CS0649
 }
