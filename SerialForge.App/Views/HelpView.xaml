@@ -1,16 +1,50 @@
 <Window x:Class="SerialForge.App.Views.HelpView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="使用说明" Height="500" Width="640">
+        Title="使用说明" Height="680" Width="760">
     <ScrollViewer Padding="16">
         <StackPanel>
-            <TextBlock Text="SerialForge 使用流程" FontWeight="Bold" FontSize="18" Margin="0,0,0,8"/>
-            <TextBlock Text="1. 定义协议：点右上角「编辑协议」，在弹出窗口里设置前导字节/长度字段，增删帧字段（literal/value/computed）与命令，填好后点「应用」即可即时生效；也可「打开…」现有 JSON 或「另存为…」。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="2. 连接串口：顶部选择端口与波特率，点「连接」。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="3. 选择命令并填写应用数据：命令下拉选择后，下方自动出现该命令的可编辑字段；literal/computed 字段由引擎自动填充。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="4. 发送并观察日志：点「发送」，下方「收发日志」显示时间戳、方向(TX/RX)、十六进制与按字段解析；坏帧红色标记，不崩溃。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="示例帧格式（demo-mcu）：AA 55 | len(u16le) | cmd(u8) | payload | crc16(u16le)" TextWrapping="Wrap" FontFamily="Consolas" Margin="0,12,0,0"/>
-            <TextBlock Text="字段三态：literal=固定常量（只读）；value=应用数据（可编辑）；computed=引擎计算（长度/CRC，只读自动）。" TextWrapping="Wrap" Margin="0,8"/>
+
+            <!-- 1. 快速上手 -->
+            <TextBlock Text="一、快速上手" FontWeight="Bold" FontSize="16" Margin="0,0,0,6"/>
+            <TextBlock Text="1. 定义协议：点右上角「编辑协议」，设置前导字节/长度字段，增删帧字段（literal/value/computed）与命令，点「应用」即时生效；也可「打开…」现有 JSON 或「另存为…」。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="2. 连接串口：顶部选端口与波特率，点「连接」。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="3. 选命令填数据：命令下拉后，下方出现该命令的可编辑字段；literal/computed 字段由引擎自动填充。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="4. 发送并观察日志：点「发送」，「收发日志」显示时间戳、方向(TX/RX)、十六进制、ASCII 文本与按字段解析；坏帧红色标记，不崩溃。" TextWrapping="Wrap" Margin="0,4"/>
+
+            <!-- 2. 字段三态与字节序 -->
+            <TextBlock Text="二、字段三态与字节序" FontWeight="Bold" FontSize="16" Margin="0,12,0,6"/>
+            <TextBlock Text="· literal：固定常量（只读），如前导 AA 55。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="· value：应用数据（可编辑），如 cmd、payload。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="· computed：引擎计算（只读），如 length、crc、sum、xor。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="· 字节序：每个字段可选 little/big，留空则用协议默认字节序。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="· size：bytes/string 等变长字段需显式指定字节数；u8/u16/u32 由编码固定，无需填。" TextWrapping="Wrap" Margin="0,4"/>
+
+            <!-- 3. 计算字段 -->
+            <TextBlock Text="三、计算字段（computed）" FontWeight="Bold" FontSize="16" Margin="0,12,0,6"/>
+            <TextBlock Text="length（长度）：在「counts」填计入长度的字段名（逗号分隔），引擎把这些字段的总字节数累加，再加上「offset」（默认 0）作为长度值。params.width 跟随长度字段编码（u16→2）。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="示例：counts=payload, offset=0 → len = payload 的字节数。" TextWrapping="Wrap" Margin="0,4" FontFamily="Consolas"/>
+            <TextBlock Text="CRC（crc16/crc32）：在「from」「to」填起止字段名，校验范围 = 从 from 字段首字节 到 to 字段末字节（含两端）。通常 from=帧首字段(如 preamble)，to=校验前最后一个字段(如 payload)，即覆盖整帧除校验自身外的全部字节。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="CRC 五参数（在 params 下，均可留空用内置默认）：&#x0a;  · poly：多项式（如 CRC-CCITT 为 0x1021）&#x0a;  · init：初值（如 0xFFFF）&#x0a;  · refIn：输入是否按位反射（true/false）&#x0a;  · refOut：输出是否按位反射（true/false）&#x0a;  · xorOut：输出异或值（如 0x0000）" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="demo-mcu 的 crc16 = poly:0x1021 / init:0xFFFF / refIn:false / refOut:false / xorOut:0x0000（即 CRC-CCITT），覆盖 from=preamble 到 to=payload。" TextWrapping="Wrap" Margin="0,4" FontFamily="Consolas"/>
+            <TextBlock Text="sum8 / xor8：单字节校验，同样用 from/to 指定范围，把范围内所有字节相加（&amp;0xFF）或异或。" TextWrapping="Wrap" Margin="0,4"/>
+
+            <!-- 4. 位域 -->
+            <TextBlock Text="四、位域字段（一个字节内拆多个字段）" FontWeight="Bold" FontSize="16" Margin="0,12,0,6"/>
+            <TextBlock Text="当一个 u8 字段需要按位拆分（如高 4 位=类型、低 4 位=子类型），在字段上加 bits 子项。每个 bit 字段含 name、offset（0 = 最高位，即「前四位」）、width（位数）、可选 default 与 enum。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="示例：status(u8) 拆成 type(offset=0,width=4) 与 subtype(offset=4,width=4)，type=0x5、subtype=0x3 → 该字节为 0x53。" TextWrapping="Wrap" Margin="0,4" FontFamily="Consolas"/>
+            <TextBlock Text="收包时日志会按子字段解析显示，如 status.type=5 | status.subtype=3。" TextWrapping="Wrap" Margin="0,4"/>
+
+            <!-- 5. 原始发送 -->
+            <TextBlock Text="五、原始发送" FontWeight="Bold" FontSize="16" Margin="0,12,0,6"/>
+            <TextBlock Text="「原始发送」可旁路协议引擎直发字节：左侧切换 Hex / 文本 模式。Hex 模式输十六进制（如 AA 55）；文本模式按所选编码（ASCII / UTF-8 / GBK）把字符串编码成字节发出，适合发 AT 指令、明文等。" TextWrapping="Wrap" Margin="0,4"/>
+
+            <!-- 6. framing / enum / schema -->
+            <TextBlock Text="六、成帧模式、enum 与 JSON 速查" FontWeight="Bold" FontSize="16" Margin="0,12,0,6"/>
+            <TextBlock Text="成帧模式：length-prefix（长度前导，需配 lengthField）、delimiter（分隔符）、timeout（超时成帧）。enum：value 字段可挂 enum 映射，收包时数值自动显示为对应名称。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="JSON 结构（见 demo-mcu.json）：framing(mode/preamble/lengthField/frameTimeoutMs) + layout[](name/kind/codec/byteOrder/size/value/default/enum/compute) + commands[](name/title/fix/payloadFields)。" TextWrapping="Wrap" Margin="0,4" FontFamily="Consolas"/>
+            <TextBlock Text="示例帧（demo-mcu）：AA 55 | len(u16le) | cmd(u8) | payload | crc16(u16le)" TextWrapping="Wrap" Margin="0,8" FontFamily="Consolas"/>
+
         </StackPanel>
     </ScrollViewer>
 </Window>
