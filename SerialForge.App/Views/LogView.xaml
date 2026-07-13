@@ -25,6 +25,7 @@
                     <GridViewColumn Header="时间" Width="90" DisplayMemberBinding="{Binding Timestamp, StringFormat='HH:mm:ss.fff'}"/>
                     <GridViewColumn Header="方向" Width="40" DisplayMemberBinding="{Binding Direction}"/>
                     <GridViewColumn Header="十六进制" Width="500" DisplayMemberBinding="{Binding Hex}"/>
+                    <GridViewColumn Header="文本" Width="200" DisplayMemberBinding="{Binding Ascii}"/>
                     <GridViewColumn Header="详情" Width="400" DisplayMemberBinding="{Binding Detail}"/>
                 </GridView>
             </ListView.View>
