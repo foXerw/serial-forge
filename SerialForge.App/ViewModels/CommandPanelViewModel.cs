@@ -100,8 +100,21 @@ public partial class CommandPanelViewModel : ViewModelBase
         _currentCommandName = value.Name;
         foreach (var pf in value.PayloadFields)
         {
-            var initial = (_valueCache.TryGetValue(value.Name, out var c) && c.TryGetValue(pf.Name, out var v)) ? v : pf.Default;
-            Fields.Add(new FieldEditorViewModel(pf.Name, pf.Codec.ToString(), initial, isReadOnly: false));
+            if (pf.Bits is { } bits)
+            {
+                foreach (var child in bits)
+                {
+                    string key = $"{pf.Name}.{child.Name}";
+                    var initial = (_valueCache.TryGetValue(value.Name, out var c) && c.TryGetValue(key, out var v))
+                        ? v : (child.Default ?? "0");
+                    Fields.Add(new FieldEditorViewModel(key, "u8", initial, false, maxValue: (ulong)((1 << child.Width) - 1)));
+                }
+            }
+            else
+            {
+                var initial = (_valueCache.TryGetValue(value.Name, out var c) && c.TryGetValue(pf.Name, out var v)) ? v : pf.Default;
+                Fields.Add(new FieldEditorViewModel(pf.Name, pf.Codec.ToString(), initial, isReadOnly: false));
+            }
         }
     }
 
@@ -114,8 +127,8 @@ public partial class CommandPanelViewModel : ViewModelBase
             var inst = new CommandInstance { Command = SelectedCommand };
             foreach (var fe in Fields)
             {
-                var pf = SelectedCommand.PayloadFields.First(p => p.Name == fe.Name);
-                inst.PayloadValues[fe.Name] = ParseValue(fe.Value, pf.Codec);
+                var codec = Enum.Parse<CodecType>(fe.Codec, ignoreCase: true);
+                inst.PayloadValues[fe.Name] = ParseValue(fe.Value, codec);
             }
             frame = _engine.Encode(inst);
         }

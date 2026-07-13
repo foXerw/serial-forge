@@ -13,12 +13,14 @@ public partial class FieldEditorViewModel : ViewModelBase
     public string Name { get; }
     public string Codec { get; }
     public bool IsReadOnly { get; }
+    private readonly ulong? _maxValue;
 
-    public FieldEditorViewModel(string name, string codec, string? defaultValue, bool isReadOnly)
+    public FieldEditorViewModel(string name, string codec, string? defaultValue, bool isReadOnly, ulong? maxValue = null)
     {
         Name = name;
         Codec = codec;
         IsReadOnly = isReadOnly;
+        _maxValue = maxValue;
         _value = defaultValue ?? "";
         Validate();
     }
@@ -28,9 +30,14 @@ public partial class FieldEditorViewModel : ViewModelBase
 
     private void Validate()
     {
-        if (IsReadOnly || !Enum.TryParse<CodecType>(Codec, out var codec))
+        if (IsReadOnly || !Enum.TryParse<CodecType>(Codec, ignoreCase: true, out var codec))
         {
             ValidationMessage = null;
+            return;
+        }
+        if (_maxValue is { } max)
+        {
+            ValidationMessage = ValidateRange(Value, max, $"0–{max}");
             return;
         }
         ValidationMessage = codec switch

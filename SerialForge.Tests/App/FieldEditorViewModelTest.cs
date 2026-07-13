@@ -30,4 +30,14 @@ public class FieldEditorViewModelTest
         Assert.Null(ro.ValidationMessage);
         ro.Value = "999999"; Assert.Null(ro.ValidationMessage);   // read-only skips validation
     }
+
+    [Fact]
+    public void Bit_child_validates_against_width_range()
+    {
+        var fe = new FieldEditorViewModel("flags.type", "u8", "0", false, maxValue: 15); // 4-bit
+        fe.Value = "0x10";   // 16 > 15
+        Assert.False(string.IsNullOrEmpty(fe.ValidationMessage));
+        fe.Value = "0xF";    // 15 ok
+        Assert.True(string.IsNullOrEmpty(fe.ValidationMessage));
+    }
 }

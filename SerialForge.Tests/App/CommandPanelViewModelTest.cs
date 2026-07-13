@@ -104,4 +104,24 @@ public class CommandPanelViewModelTest
         vm.SelectedCommand = vm.Commands[0];
         Assert.True(vm.Send.CanExecute(null));
     }
+
+    [Fact]
+    public void Payload_bitfield_expands_into_child_rows_and_packs()
+    {
+        var def = ProtocolLoader.Load(File.ReadAllText("Fixtures/demo-bits.json"));
+        var engine = new ProtocolEngine(def);
+        byte[]? sent = null;
+        var vm = new CommandPanelViewModel(engine, b => sent = b);
+        vm.Load(def);
+        vm.SelectedCommand = vm.Commands[0];   // setFlags
+        Assert.Equal(3, vm.Fields.Count);      // flags.type, flags.subtype, seq
+        Assert.Contains(vm.Fields, f => f.Name == "flags.type");
+        vm.Fields.First(f => f.Name == "flags.type").Value = "0x5";
+        vm.Fields.First(f => f.Name == "flags.subtype").Value = "0x3";
+        vm.Fields.First(f => f.Name == "seq").Value = "0x7";
+        vm.Send.Execute(null);
+        Assert.NotNull(sent);
+        Assert.Equal(0x53, sent![6]);   // flags byte packed: type5<<4 | sub3
+        Assert.Equal(0x07, sent[7]);    // seq
+    }
 }
