@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SerialForge.Core;
 using SerialForge.Core.Models;
 
@@ -63,4 +64,10 @@ public sealed partial class LayoutFieldViewModel : ViewModelBase
     {
         CodecType.U8 => 1, CodecType.U16 => 2, CodecType.U32 => 4, _ => 1
     };
+
+    [RelayCommand]
+    private void AddBit() => Bits.Add(new BitFieldEditorViewModel());
+
+    [RelayCommand]
+    private void RemoveBit(BitFieldEditorViewModel? b) { if (b is not null) Bits.Remove(b); }
 }

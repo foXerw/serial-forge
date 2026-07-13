@@ -17,6 +17,20 @@
         <x:Array x:Key="Modes" Type="{x:Type core:FramingMode}">
             <core:FramingMode>LengthPrefix</core:FramingMode><core:FramingMode>Delimiter</core:FramingMode><core:FramingMode>Timeout</core:FramingMode>
         </x:Array>
+        <DataTemplate x:Key="BitFieldRow" DataType="{x:Type vm:BitFieldEditorViewModel}">
+            <StackPanel Orientation="Horizontal" Margin="0,1">
+                <TextBox Text="{Binding Name}" Width="70" Margin="1" ToolTip="位字段名"/>
+                <TextBlock Text="off:" VerticalAlignment="Center"/>
+                <TextBox Text="{Binding Offset}" Width="34" Margin="1" ToolTip="位偏移(0=最高位)"/>
+                <TextBlock Text="w:" VerticalAlignment="Center"/>
+                <TextBox Text="{Binding Width}" Width="30" Margin="1" ToolTip="位宽"/>
+                <TextBox Text="{Binding Default}" Width="46" Margin="1" ToolTip="默认值"/>
+                <TextBox Text="{Binding Enum}" Width="120" Margin="1" ToolTip="枚举，如 0:idle,1:run"/>
+                <Button Content="✕" Width="20" Margin="1,0" Padding="0" Foreground="#C00"
+                        Command="{Binding DataContext.RemoveBitCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                        CommandParameter="{Binding}"/>
+            </StackPanel>
+        </DataTemplate>
     </Window.Resources>
     <Grid Margin="6">
         <Grid.RowDefinitions>
@@ -69,6 +83,7 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="{x:Type vm:LayoutFieldViewModel}">
                                             <Border BorderBrush="#DDD" BorderThickness="0,0,0,1" Padding="2">
+                                                <StackPanel>
                                                 <StackPanel Orientation="Horizontal">
                                                     <Button Content="↑" Width="22" Margin="1" Padding="0"
                                                             Command="{Binding DataContext.MoveLayoutFieldUp, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -105,6 +120,15 @@
                                                             <CheckBox Content="refOut" IsChecked="{Binding Compute.RefOut}" Margin="2,0"/>
                                                         </StackPanel>
                                                     </StackPanel>
+                                                    <CheckBox Content="位域" IsChecked="{Binding IsBitField}" Margin="6,0"
+                                                              ToolTip="把此 u8 字段拆成多个位字段（仅 value 字段；勾选后强制 u8）"/>
+                                                </StackPanel>
+                                                <StackPanel Margin="24,2,0,2"
+                                                            Visibility="{Binding IsBitField, Converter={x:Static c:VisibilityConverter.Instance}}">
+                                                    <ItemsControl ItemsSource="{Binding Bits}" ItemTemplate="{StaticResource BitFieldRow}"/>
+                                                    <Button Content="+ 位字段" Width="64" Margin="2" Padding="2" HorizontalAlignment="Left"
+                                                            Command="{Binding AddBitCommand}"/>
+                                                </StackPanel>
                                                 </StackPanel>
                                             </Border>
                                         </DataTemplate>
@@ -159,6 +183,7 @@
                                                         <ItemsControl ItemsSource="{Binding PayloadFields}">
                                                             <ItemsControl.ItemTemplate>
                                                                 <DataTemplate DataType="{x:Type vm:PayloadFieldViewModel}">
+                                                                    <StackPanel>
                                                                     <StackPanel Orientation="Horizontal" Margin="0,1">
                                                                         <TextBox Text="{Binding Name}" Width="80" Margin="2"/>
                                                                         <ComboBox ItemsSource="{StaticResource Codecs}" SelectedItem="{Binding Codec}" Width="64" Margin="2"/>
@@ -168,6 +193,15 @@
                                                                         <Button Content="✕" Width="20" Margin="1,0" Padding="0" Foreground="#C00"
                                                                                 Command="{Binding DataContext.RemovePayloadField, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                                 CommandParameter="{Binding}"/>
+                                                                        <CheckBox Content="位域" IsChecked="{Binding IsBitField}" Margin="6,0"
+                                                                                  ToolTip="把此 u8 字段拆成多个位字段（勾选后强制 u8）"/>
+                                                                    </StackPanel>
+                                                                    <StackPanel Margin="24,2,0,2"
+                                                                                Visibility="{Binding IsBitField, Converter={x:Static c:VisibilityConverter.Instance}}">
+                                                                        <ItemsControl ItemsSource="{Binding Bits}" ItemTemplate="{StaticResource BitFieldRow}"/>
+                                                                        <Button Content="+ 位字段" Width="64" Margin="2" Padding="2" HorizontalAlignment="Left"
+                                                                                Command="{Binding AddBitCommand}"/>
+                                                                    </StackPanel>
                                                                     </StackPanel>
                                                                 </DataTemplate>
                                                             </ItemsControl.ItemTemplate>

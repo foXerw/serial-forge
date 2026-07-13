@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SerialForge.Core;
 using SerialForge.Core.Models;
 
@@ -30,4 +31,10 @@ public sealed partial class PayloadFieldViewModel : ViewModelBase
         var codec = bits is null ? Codec : CodecType.U8;
         return new PayloadFieldDef(Name, codec, ByteOrder, Size, Default == "" ? null : Default, bits);
     }
+
+    [RelayCommand]
+    private void AddBit() => Bits.Add(new BitFieldEditorViewModel());
+
+    [RelayCommand]
+    private void RemoveBit(BitFieldEditorViewModel? b) { if (b is not null) Bits.Remove(b); }
 }
