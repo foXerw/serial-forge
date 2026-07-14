@@ -26,6 +26,9 @@
                 <TextBox Text="{Binding Width}" Width="30" Margin="1" ToolTip="位宽"/>
                 <TextBox Text="{Binding Default}" Width="46" Margin="1" ToolTip="默认值"/>
                 <TextBox Text="{Binding Enum}" Width="120" Margin="1" ToolTip="枚举，如 0:idle,1:run"/>
+                <CheckBox Content="长度" IsChecked="{Binding IsLength}" Margin="3,0"
+                          Visibility="{Binding CanSetIsLength, Converter={x:Static c:VisibilityConverter.Instance}}"
+                          ToolTip="把此位标记为自动计算的长度位（仅 length 字段；整字节里只能选一位）"/>
                 <Button Content="✕" Width="20" Margin="1,0" Padding="0" Foreground="#C00"
                         Command="{Binding DataContext.RemoveBitCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                         CommandParameter="{Binding}"/>
@@ -121,7 +124,7 @@
                                                         </StackPanel>
                                                     </StackPanel>
                                                     <CheckBox Content="位域" IsChecked="{Binding IsBitField}" Margin="6,0"
-                                                              ToolTip="把此 u8 字段拆成多个位字段（仅 value 字段；勾选后强制 u8）"/>
+                                                              ToolTip="把此 u8 字段拆成多个位字段（value 或 length 字段；勾选后强制 u8。length 字段需用子行的「长度」勾选指定位域中哪一位承载自动计算的长度）"/>
                                                 </StackPanel>
                                                 <StackPanel Margin="24,2,0,2"
                                                             Visibility="{Binding IsBitField, Converter={x:Static c:VisibilityConverter.Instance}}">

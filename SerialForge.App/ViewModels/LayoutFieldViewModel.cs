@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -21,14 +22,59 @@ public sealed partial class LayoutFieldViewModel : ViewModelBase
     public ObservableCollection<BitFieldEditorViewModel> Bits { get; } = new();
     [ObservableProperty] private bool _isBitField;
 
-    public LayoutFieldViewModel() { }
+    // True when this row is a length-prefix field that may share its byte with
+    // other attributes — its bit children then expose the IsLength selector.
+    public bool IsLengthField => Kind == FieldKind.Computed && Compute.IsLength;
+
+    public LayoutFieldViewModel() { Compute.PropertyChanged += OnComputeChanged; }
     public LayoutFieldViewModel(FieldDef f)
     {
         _name = f.Name; _kind = f.Kind; _codec = f.Codec; _byteOrder = f.ByteOrder; _size = f.Size;
         _literalValue = f.LiteralValue is null ? "" : string.Join(" ", f.LiteralValue);
         _default = f.Default ?? "";
         if (f.Compute is { } c) Compute = new ComputeEditorViewModel(c);
-        if (f.Bits is { } bs) { _isBitField = true; foreach (var b in bs) Bits.Add(new BitFieldEditorViewModel(b)); }
+        Compute.PropertyChanged += OnComputeChanged;
+        if (f.Bits is { } bs) { _isBitField = true; foreach (var b in bs) Bits.Add(MakeBit(b)); }
+        RefreshBitFlags();
+    }
+
+    partial void OnKindChanged(FieldKind value)
+    {
+        OnPropertyChanged(nameof(IsLengthField));
+        RefreshBitFlags();
+    }
+
+    // React to algo switches (length <-> crc/sum) in the compute editor.
+    private void OnComputeChanged(object? s, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ComputeEditorViewModel.Algo) or nameof(ComputeEditorViewModel.IsLength))
+        {
+            OnPropertyChanged(nameof(IsLengthField));
+            RefreshBitFlags();
+        }
+    }
+
+    private void RefreshBitFlags()
+    {
+        foreach (var b in Bits) b.CanSetIsLength = IsLengthField;
+    }
+
+    // Radio behavior: marking a child as the length carrier clears the others,
+    // since a length byte has exactly one length child.
+    private void OnBitChanged(object? s, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(BitFieldEditorViewModel.IsLength)) return;
+        if (s is BitFieldEditorViewModel bit && bit.IsLength)
+            foreach (var other in Bits)
+                if (!ReferenceEquals(other, bit)) other.IsLength = false;
+    }
+
+    private BitFieldEditorViewModel MakeBit(BitFieldDef? d = null)
+    {
+        var b = d is null ? new BitFieldEditorViewModel() : new BitFieldEditorViewModel(d);
+        b.CanSetIsLength = IsLengthField;
+        b.PropertyChanged += OnBitChanged;
+        return b;
     }
 
     public FieldDef ToFieldDef()
@@ -40,7 +86,7 @@ public sealed partial class LayoutFieldViewModel : ViewModelBase
             p["width"] = JsonSerializer.SerializeToElement(CodecWidth(Codec));
             compute = compute with { Params = p };
         }
-        BitFieldDef[]? bits = IsBitField ? Bits.Select(b => b.ToDef()).ToArray() : null;
+        BitFieldDef[]? bits = IsBitField ? BuildBits() : null;
         var codec = bits is null ? Codec : CodecType.U8;
         return new FieldDef(
             Name, Kind, codec, ByteOrder, Size,
@@ -65,9 +111,29 @@ public sealed partial class LayoutFieldViewModel : ViewModelBase
         CodecType.U8 => 1, CodecType.U16 => 2, CodecType.U32 => 4, _ => 1
     };
 
-    [RelayCommand]
-    private void AddBit() => Bits.Add(new BitFieldEditorViewModel());
+    // Build the bit defs, guaranteeing a length bitfield has exactly one IsLength
+    // child (auto-mark the first if none, drop extras if many). The radio handler
+    // usually keeps the UI in shape; this is the deterministic safety net.
+    private BitFieldDef[] BuildBits()
+    {
+        var defs = Bits.Select(b => b.ToDef()).ToArray();
+        if (IsLengthField && defs.Length > 0)
+        {
+            int first = Array.FindIndex(defs, d => d.IsLength);
+            if (first < 0) defs[0] = defs[0] with { IsLength = true };
+            else
+                for (int i = 0; i < defs.Length; i++)
+                    if (i != first && defs[i].IsLength) defs[i] = defs[i] with { IsLength = false };
+        }
+        return defs;
+    }
 
     [RelayCommand]
-    private void RemoveBit(BitFieldEditorViewModel? b) { if (b is not null) Bits.Remove(b); }
+    private void AddBit() => Bits.Add(MakeBit());
+
+    [RelayCommand]
+    private void RemoveBit(BitFieldEditorViewModel? b)
+    {
+        if (b is not null) { b.PropertyChanged -= OnBitChanged; Bits.Remove(b); }
+    }
 }

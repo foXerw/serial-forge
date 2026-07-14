@@ -29,7 +29,7 @@ public sealed class ProtocolEngine
             segments.Add((f, EncodeField(f, values)));
 
         // 4. Resolve length-computed fields (constraint solve from known sizes).
-        ResolveLengths(segments);
+        ResolveLengths(segments, values);
 
         // 5. Resolve remaining computed fields (checksum/CRC over byte ranges).
         var buffer = AssembleWithHoles(segments, out var offsets);
@@ -111,7 +111,7 @@ public sealed class ProtocolEngine
         return BytesCodec.ParseHex(val.ToString()!);
     }
 
-    private void ResolveLengths(List<(FieldDef field, byte[]? bytes)> segments)
+    private void ResolveLengths(List<(FieldDef field, byte[]? bytes)> segments, Dictionary<string, object> values)
     {
         // segments holds value tuples: a foreach copy would discard writes, so
         // mutate by index and write the element back into the list.
@@ -129,8 +129,24 @@ public sealed class ProtocolEngine
                 ms.Write(target.bytes);
             }
             var range = ms.ToArray();
-            var computed = _algos.Get("length").Compute(range, spec.Compute!);
-            seg.bytes = ApplyByteOrder(computed, spec.ByteOrder ?? _def.DefaultByteOrder);
+
+            if (spec.Bits is { } lbits)
+            {
+                // The length lives in one bit child; the rest of the byte holds other
+                // attributes (version/flags). Compute the scalar length, fit it into
+                // that child's width, then pack the whole byte from all children.
+                var lenChild = lbits.First(b => b.IsLength);
+                long lenVal = range.Length + spec.Compute!.Offset;
+                if ((ulong)lenVal >> lenChild.Width != 0)
+                    throw new ProtocolException($"length {lenVal} overflows {lenChild.Width}-bit field '{spec.Name}.{lenChild.Name}'");
+                values[$"{spec.Name}.{lenChild.Name}"] = (ulong)lenVal;
+                seg.bytes = PackBits(spec.Name, lbits, values);
+            }
+            else
+            {
+                var computed = _algos.Get("length").Compute(range, spec.Compute!);
+                seg.bytes = ApplyByteOrder(computed, spec.ByteOrder ?? _def.DefaultByteOrder);
+            }
             segments[i] = seg;
         }
     }
@@ -264,6 +280,32 @@ public sealed class ProtocolEngine
                 {
                     fields.Add(new DecodedField(f.Name, ToHexDisplay(LiteralBytes(f)), offset, size, false));
                 }
+                else if (f.Kind == FieldKind.Computed && f.Bits is { } lbits)
+                {
+                    // Length shares its byte with other attributes: expand each child,
+                    // and verify the isLength child against the recomputed count.
+                    byte bv = frame[offset];
+                    bool ok = true;
+                    long actualLen = 0, expectedLen = 0;
+                    foreach (var child in lbits)
+                    {
+                        int shift = 8 - child.Offset - child.Width;
+                        int mask = (1 << child.Width) - 1;
+                        ulong cv = (ulong)((bv >> shift) & mask);
+                        if (child.IsLength)
+                        {
+                            var range = CountedRange(f.Compute!, resolvedSizes, frame);
+                            expectedLen = range.Length + f.Compute!.Offset;
+                            actualLen = (long)cv;
+                            ok = expectedLen == actualLen;
+                        }
+                        object display = child.Enum is not null && child.Enum.TryGetValue(cv.ToString(), out var es) ? es : cv;
+                        fields.Add(new DecodedField($"{f.Name}.{child.Name}", display, offset, size, child.IsLength && !ok));
+                    }
+                    if (!ok)
+                        return new DecodedFrame(fields.ToArray(), frame,
+                            $"length mismatch on '{f.Name}': got {actualLen} expected {expectedLen}");
+                }
                 else if (f.Kind == FieldKind.Computed)
                 {
                     var (ok, actual, expected) = VerifyComputed(f, frame, offset, size, resolvedSizes);
@@ -323,8 +365,22 @@ public sealed class ProtocolEngine
         if (lengthField is not null)
         {
             int lenFieldOff = SumSizesBefore(lengthField.Name, resolved);
-            int lenSize = resolved[lengthField.Name];
-            long lenVal = ReadUInt(frame, lenFieldOff, lenSize, lengthField.ByteOrder ?? _def.DefaultByteOrder);
+            long lenVal;
+            if (lengthField.Bits is { } lenbits)
+            {
+                // Length shares its byte with other attributes: only the isLength
+                // child's bits hold the count, not the whole byte.
+                var lenChild = lenbits.First(b => b.IsLength);
+                byte bv = frame[lenFieldOff];
+                int shift = 8 - lenChild.Offset - lenChild.Width;
+                int mask = (1 << lenChild.Width) - 1;
+                lenVal = (bv >> shift) & mask;
+            }
+            else
+            {
+                int lenSize = resolved[lengthField.Name];
+                lenVal = ReadUInt(frame, lenFieldOff, lenSize, lengthField.ByteOrder ?? _def.DefaultByteOrder);
+            }
             long sumOthers = (lengthField.Compute!.Counts ?? Array.Empty<string>())
                 .Where(n => n != f.Name).Sum(n => resolved[n]);
             return (int)(lenVal - sumOthers - lengthField.Compute.Offset);

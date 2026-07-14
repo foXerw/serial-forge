@@ -62,6 +62,7 @@ public static class ProtocolSaver
         };
         if (b.Enum is not null) d["enum"] = b.Enum;
         if (b.Default is not null) d["default"] = b.Default;
+        if (b.IsLength) d["isLength"] = true;
         return d;
     }
 

@@ -250,4 +250,70 @@ public class EditorViewModelsTest
         Assert.NotNull(def.Bits);
         Assert.Equal(CodecType.U8, def.Codec);
     }
+
+    private static FieldDef LengthBitField(params BitFieldDef[] bits) =>
+        new("len", FieldKind.Computed, CodecType.U8, null, null, null, null, null,
+            new ComputeSpec("length", new[] { "payload" }, 0, null, null, null), bits);
+
+    [Fact]
+    public void Length_bitfield_load_marks_isLength_child_and_enables_selector()
+    {
+        var src = LengthBitField(
+            new BitFieldDef("ver", 0, 4, null, "0x1", false),
+            new BitFieldDef("size", 4, 4, null, null, true));
+        var vm = new LayoutFieldViewModel(src);
+        Assert.True(vm.IsLengthField);
+        Assert.True(vm.Bits[0].CanSetIsLength);
+        Assert.True(vm.Bits[1].CanSetIsLength);
+        Assert.False(vm.Bits[0].IsLength);
+        Assert.True(vm.Bits[1].IsLength);
+    }
+
+    [Fact]
+    public void Length_bitfield_radio_clears_sibling_when_one_marked()
+    {
+        var src = LengthBitField(
+            new BitFieldDef("ver", 0, 4, null, "0x1", false),
+            new BitFieldDef("size", 4, 4, null, null, true));
+        var vm = new LayoutFieldViewModel(src);
+        vm.Bits[0].IsLength = true;            // mark the other child
+        Assert.True(vm.Bits[0].IsLength);
+        Assert.False(vm.Bits[1].IsLength);     // sibling cleared
+    }
+
+    [Fact]
+    public void Length_bitfield_build_auto_marks_one_when_none_marked()
+    {
+        var src = LengthBitField(
+            new BitFieldDef("ver", 0, 4, null, "0x1", false),
+            new BitFieldDef("size", 4, 4, null, null, false));   // no isLength child
+        var vm = new LayoutFieldViewModel(src);
+        var def = vm.ToFieldDef();
+        Assert.True(def.Bits![0].IsLength);    // first child auto-marked
+        Assert.False(def.Bits![1].IsLength);
+    }
+
+    [Fact]
+    public void Length_bitfield_build_keeps_first_when_two_marked()
+    {
+        // Hand-authored JSON could mark two; loading doesn't trigger radio (ctor
+        // field sets don't raise), so BuildBits must collapse to the first.
+        var src = LengthBitField(
+            new BitFieldDef("ver", 0, 4, null, "0x1", true),
+            new BitFieldDef("size", 4, 4, null, null, true));
+        var vm = new LayoutFieldViewModel(src);
+        var def = vm.ToFieldDef();
+        Assert.True(def.Bits![0].IsLength);
+        Assert.False(def.Bits![1].IsLength);
+    }
+
+    [Fact]
+    public void Non_length_field_bit_children_cannot_set_isLength()
+    {
+        var src = new FieldDef("status", FieldKind.Value, CodecType.U8, null, null, null, null, null, null,
+            new[] { new BitFieldDef("type", 0, 4, null, "0x1") });
+        var vm = new LayoutFieldViewModel(src);
+        Assert.False(vm.IsLengthField);
+        Assert.False(vm.Bits[0].CanSetIsLength);   // 长度勾选隐藏
+    }
 }

@@ -58,7 +58,7 @@ public static class ProtocolLoader
         c.Algo!, c.Counts, c.Offset ?? 0, c.Over?.From, c.Over?.To, c.Params);
 
     private static BitFieldDef[]? ToBits(Dto.BitFieldDto[]? arr) => arr is null ? null
-        : arr.Select(b => new BitFieldDef(b.Name!, b.Offset, b.Width, b.Enum, b.Default)).ToArray();
+        : arr.Select(b => new BitFieldDef(b.Name!, b.Offset, b.Width, b.Enum, b.Default, b.IsLength)).ToArray();
 
     private static CommandDef ToCommandDef(Dto.CommandDto c) => new(
         c.Name!, c.Title ?? c.Name!, c.Fix ?? new(),
@@ -87,8 +87,22 @@ public static class ProtocolLoader
             {
                 if (f.Codec != CodecType.U8)
                     throw new ProtocolException($"bitfield '{f.Name}' must use codec u8");
-                if (f.Kind != FieldKind.Value)
-                    throw new ProtocolException($"bitfield '{f.Name}' only allowed on value fields");
+                bool isLengthField = f.Kind == FieldKind.Computed && f.Compute?.Algo == "length";
+                if (f.Kind == FieldKind.Value)
+                {
+                    if (lbits.Any(b => b.IsLength))
+                        throw new ProtocolException($"bitfield '{f.Name}': isLength child only allowed on a length field");
+                }
+                else if (isLengthField)
+                {
+                    int n = lbits.Count(b => b.IsLength);
+                    if (n != 1)
+                        throw new ProtocolException($"bitfield '{f.Name}': length field needs exactly one isLength child (found {n})");
+                }
+                else
+                {
+                    throw new ProtocolException($"bitfield '{f.Name}' only allowed on value or length fields");
+                }
                 ValidateBits(f.Name, lbits);
             }
             if (f.Kind == FieldKind.Computed && f.Compute is { } c)
@@ -108,6 +122,8 @@ public static class ProtocolLoader
                 {
                     if (pf.Codec != CodecType.U8)
                         throw new ProtocolException($"bitfield '{c.Name}.{pf.Name}' must use codec u8");
+                    if (pbits.Any(b => b.IsLength))
+                        throw new ProtocolException($"bitfield '{c.Name}.{pf.Name}': isLength child only allowed on a length field");
                     ValidateBits($"{c.Name}.{pf.Name}", pbits);
                 }
     }
@@ -166,7 +182,7 @@ public static class ProtocolLoader
         public sealed class OverDto { public string? From; public string? To; }
         public sealed class CommandDto { public string? Name; public string? Title; public Dictionary<string,string>? Fix; public PayloadFieldDto[]? PayloadFields; }
         public sealed class PayloadFieldDto { public string? Name; public string? Codec; public string? ByteOrder; public int? Size; public string? Default; public BitFieldDto[]? Bits; }
-        public sealed class BitFieldDto { public string? Name; public int Offset; public int Width; public Dictionary<string,string>? Enum; public string? Default; }
+        public sealed class BitFieldDto { public string? Name; public int Offset; public int Width; public Dictionary<string,string>? Enum; public string? Default; public bool IsLength; }
     }
 #pragma warning restore CS0649
 }

@@ -61,4 +61,29 @@ public class ProtocolSaverTest
         Assert.Equal("0x1", status.Bits[0].Default);
         Assert.NotNull(again.Commands[0].PayloadFields.First(p => p.Name == "flags").Bits);
     }
+
+    [Fact]
+    public void IsLength_round_trips_through_saver()
+    {
+        var json = """
+        {
+          "name": "len-bits", "version": "1.0", "defaultByteOrder": "little",
+          "framing": { "mode": "length-prefix", "preamble": ["0xAA"], "lengthField": "len", "frameTimeoutMs": 50 },
+          "layout": [
+            { "name": "preamble", "kind": "literal", "codec": "bytes", "value": ["0xAA"] },
+            { "name": "len", "kind": "computed", "codec": "u8", "compute": { "algo": "length", "counts": ["payload"] },
+              "bits": [
+                { "name": "ver", "offset": 0, "width": 4, "default": "0x1" },
+                { "name": "size", "offset": 4, "width": 4, "isLength": true }
+              ] },
+            { "name": "payload", "kind": "value", "codec": "bytes" }
+          ],
+          "commands": [ { "name": "ping", "title": "Ping", "fix": {}, "payloadFields": [] } ]
+        }
+        """;
+        var again = ProtocolLoader.Load(ProtocolSaver.ToJson(ProtocolLoader.Load(json)));
+        var len = again.Layout.First(f => f.Name == "len");
+        Assert.False(len.Bits!.First(b => b.Name == "ver").IsLength);
+        Assert.True(len.Bits!.First(b => b.Name == "size").IsLength);
+    }
 }
