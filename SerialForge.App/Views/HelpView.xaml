@@ -7,44 +7,39 @@
 
             <!-- 1. 快速上手 -->
             <TextBlock Text="一、快速上手" FontWeight="Bold" FontSize="16" Margin="0,0,0,6"/>
-            <TextBlock Text="1. 定义协议：点右上角「编辑协议」，设置前导字节/长度字段，增删帧字段（literal/value/computed）与命令，点「应用」即时生效；也可「打开…」现有 JSON 或「另存为…」。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="1. 定义协议：点「编辑协议」，按顺序增删帧字段（segment），每个字段标好角色与位宽，再配命令，点「应用」即时生效；也可「打开…」现有 JSON 或「另存为…」。" TextWrapping="Wrap" Margin="0,4"/>
             <TextBlock Text="2. 连接串口：顶部选端口与波特率，点「连接」。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="3. 选命令填数据：命令下拉后，下方出现该命令的可编辑字段；literal/computed 字段由引擎自动填充。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="4. 发送并观察日志：点「发送」，「收发日志」显示时间戳、方向(TX/RX)、十六进制、ASCII 文本与按字段解析；坏帧红色标记，不崩溃。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="3. 选命令填数据：命令下拉后，下方出现可编辑字段；固定/长度/校验字段由引擎自动算。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="4. 发送并观察日志：点「发送」，「收发日志」显示时间戳、方向(TX/RX)、十六进制、ASCII 与按字段解析；坏帧红色标记，不崩溃。" TextWrapping="Wrap" Margin="0,4"/>
 
-            <!-- 2. 字段三态与字节序 -->
-            <TextBlock Text="二、字段三态与字节序" FontWeight="Bold" FontSize="16" Margin="0,12,0,6"/>
-            <TextBlock Text="· literal：固定常量（只读），如前导 AA 55。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="· value：应用数据（可编辑），如 cmd、payload。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="· computed：引擎计算（只读），如 length、crc、sum、xor。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="· 字节序：每个字段可选 little/big，留空则用协议默认字节序。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="· size：bytes/string 等变长字段需显式指定字节数；u8/u16/u32 由编码固定，无需填。" TextWrapping="Wrap" Margin="0,4"/>
+            <!-- 2. 核心模型：位段 -->
+            <TextBlock Text="二、帧 = 有序位段（segment）" FontWeight="Bold" FontSize="16" Margin="0,12,0,6"/>
+            <TextBlock Text="一帧就是一串按顺序排列的「位段」。每个段有：name、role（角色）、width（位宽）。段在帧里的位置 = 前面所有段位宽的累加，位序 MSB-first（位偏移 0 = 最高位）。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="所以「高 4 位=版本、低 4 位=长度」就是两个连续段：ver(width=4) + len(width=4)，自动拼成一个字节。位域不再是特例，就是窄一点的段。" TextWrapping="Wrap" Margin="0,4" FontFamily="Consolas"/>
+            <TextBlock Text="整帧所有段位宽之和必须是 8 的倍数（整字节）。变长 payload 段的 width 留空。" TextWrapping="Wrap" Margin="0,4"/>
 
-            <!-- 3. 计算字段 -->
-            <TextBlock Text="三、计算字段（computed）" FontWeight="Bold" FontSize="16" Margin="0,12,0,6"/>
-            <TextBlock Text="length（长度）：在「counts」填计入长度的字段名（逗号分隔），引擎把这些字段的总字节数累加，再加上「offset」（默认 0）作为长度值。params.width 跟随长度字段编码（u16→2）。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="示例：counts=payload, offset=0 → len = payload 的字节数。" TextWrapping="Wrap" Margin="0,4" FontFamily="Consolas"/>
-            <TextBlock Text="CRC（crc16/crc32）：在「from」「to」填起止字段名，校验范围 = 从 from 字段首字节 到 to 字段末字节（含两端）。通常 from=帧首字段(如 preamble)，to=校验前最后一个字段(如 payload)，即覆盖整帧除校验自身外的全部字节。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="CRC 五参数（在 params 下，均可留空用内置默认）：&#x0a;  · poly：多项式（如 CRC-CCITT 为 0x1021）&#x0a;  · init：初值（如 0xFFFF）&#x0a;  · refIn：输入是否按位反射（true/false）&#x0a;  · refOut：输出是否按位反射（true/false）&#x0a;  · xorOut：输出异或值（如 0x0000）" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="demo-mcu 的 crc16 = poly:0x1021 / init:0xFFFF / refIn:false / refOut:false / xorOut:0x0000（即 CRC-CCITT），覆盖 from=preamble 到 to=payload。" TextWrapping="Wrap" Margin="0,4" FontFamily="Consolas"/>
-            <TextBlock Text="sum8 / xor8：单字节校验，同样用 from/to 指定范围，把范围内所有字节相加（&amp;0xFF）或异或。" TextWrapping="Wrap" Margin="0,4"/>
+            <!-- 3. 四种角色 -->
+            <TextBlock Text="三、四种角色 role" FontWeight="Bold" FontSize="16" Margin="0,12,0,6"/>
+            <TextBlock Text="· fixed：固定字节（前导 AA 55、帧尾），value 填 hex，width 必须等于这些字节的位数。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="· value：可编辑数据（cmd、标志位、payload）。定宽段填 default（整数，落在 width 内）；变长段（payload）width 留空，命令面板里填 hex 或用 payload 子模板。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="· length：自动算长度。counts 填计入的字段名（逗号分隔），长度 = 这些字段总字节数 + offset。一帧至多一个 length；若它数变长 payload，length 必须排在 payload 之前。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="· checksum：自动算校验。algo 选 crc16/crc32/sum8/xor8，over.from/to 填起止段名（闭区间，字节对齐），CRC 再配 poly/init/refIn/refOut/xorOut 五参数。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="字节序：width≥16 且为 8 的倍数的段才设 little/big；留空用协议默认。" TextWrapping="Wrap" Margin="0,4"/>
 
-            <!-- 4. 位域 -->
-            <TextBlock Text="四、位域字段（一个字节内拆多个字段）" FontWeight="Bold" FontSize="16" Margin="0,12,0,6"/>
-            <TextBlock Text="当一个 u8 字段需要按位拆分（如高 4 位=类型、低 4 位=子类型），在字段上加 bits 子项。每个 bit 字段含 name、offset（0 = 最高位，即「前四位」）、width（位数）、可选 default 与 enum。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="示例：status(u8) 拆成 type(offset=0,width=4) 与 subtype(offset=4,width=4)，type=0x5、subtype=0x3 → 该字节为 0x53。" TextWrapping="Wrap" Margin="0,4" FontFamily="Consolas"/>
-            <TextBlock Text="长度位域：length 字段也可开启位域，让长度与其它属性共用一个字节（如高 4 位=版本、低 4 位=实际 payload 长度）。用子项的「长度」勾选(isLength)指定位域中哪一位承载自动计算的长度——该位由引擎按 counts 自动填入并校验，其余位正常手填。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="收包时日志会按子字段解析显示，如 status.type=5 | status.subtype=3。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="注：按子字段解析仅对布局（帧级）位域生效；负载位域在发送时打包，接收时按原始字节显示。" TextWrapping="Wrap" Margin="0,4"/>
+            <!-- 4. 命令与 payload 子模板 -->
+            <TextBlock Text="四、命令与 payload 子模板" FontWeight="Bold" FontSize="16" Margin="0,12,0,6"/>
+            <TextBlock Text="命令（command）是命名预设：values 里固定某些 value 段（如 cmd=0x05）。不同命令的 payload 结构不同时，给命令配 payload 子模板——它本身也是一组 segment，打进/解出帧里的那个变长 payload 段。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="示例：writeConfig 的 payload = [id(width=8), value(width=16)]，命令面板会自动展开成 id、value 两行可编辑。" TextWrapping="Wrap" Margin="0,4" FontFamily="Consolas"/>
+            <TextBlock Text="payload 子模板在编辑器「原始 JSON」标签页里编辑。" TextWrapping="Wrap" Margin="0,4"/>
 
             <!-- 5. 原始发送 -->
             <TextBlock Text="五、原始发送" FontWeight="Bold" FontSize="16" Margin="0,12,0,6"/>
-            <TextBlock Text="「原始发送」可旁路协议引擎直发字节：左侧切换 Hex / 文本 模式。Hex 模式输十六进制（如 AA 55）；文本模式按所选编码（ASCII / UTF-8 / GBK）把字符串编码成字节发出，适合发 AT 指令、明文等。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="「原始发送」旁路协议引擎直发字节：Hex 模式输十六进制（AA 55）；文本模式按 ASCII/UTF-8/GBK 编码发出，适合 AT 指令、明文。" TextWrapping="Wrap" Margin="0,4"/>
 
-            <!-- 6. framing / enum / schema -->
-            <TextBlock Text="六、成帧模式、enum 与 JSON 速查" FontWeight="Bold" FontSize="16" Margin="0,12,0,6"/>
-            <TextBlock Text="成帧模式：length-prefix（长度前导，需配 lengthField）、delimiter（分隔符）、timeout（超时成帧）。enum：value 字段可挂 enum 映射，收包时数值自动显示为对应名称。" TextWrapping="Wrap" Margin="0,4"/>
-            <TextBlock Text="JSON 结构（见 demo-mcu.json）：framing(mode/preamble/lengthField/frameTimeoutMs) + layout[](name/kind/codec/byteOrder/size/value/default/enum/compute) + commands[](name/title/fix/payloadFields)。" TextWrapping="Wrap" Margin="0,4" FontFamily="Consolas"/>
+            <!-- 6. 成帧与 JSON 速查 -->
+            <TextBlock Text="六、成帧与 JSON 速查" FontWeight="Bold" FontSize="16" Margin="0,12,0,6"/>
+            <TextBlock Text="成帧由帧结构自动派生：第一个 fixed 段是前导（流同步），length 段给出帧总长；无前导/长度时回退到超时成帧。" TextWrapping="Wrap" Margin="0,4"/>
+            <TextBlock Text="JSON（见 demo-mcu.json）：name/version/defaultByteOrder/frameTimeoutMs + frame[](name/role/width/byteOrder/value/default/enum/counts/offset/algo/over/params) + commands[](name/title/values/payload)。" TextWrapping="Wrap" Margin="0,4" FontFamily="Consolas"/>
             <TextBlock Text="示例帧（demo-mcu）：AA 55 | len(u16le) | cmd(u8) | payload | crc16(u16le)" TextWrapping="Wrap" Margin="0,8" FontFamily="Consolas"/>
 
         </StackPanel>

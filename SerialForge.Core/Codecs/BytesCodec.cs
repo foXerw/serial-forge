@@ -1,22 +1,8 @@
 namespace SerialForge.Core.Codecs;
 
-public sealed class BytesCodec : ICodec
+// Hex byte parsing helper used by the segment loader/engine.
+public static class BytesCodec
 {
-    public int? FixedSize => null;
-
-    public byte[] Encode(object value, int length, ByteOrder order) => value switch
-    {
-        byte[] b => b,
-        string s => ParseHex(s),
-        _ => throw new ArgumentException("bytes value must be byte[] or hex string")
-    };
-
-    public (object? Value, int Consumed) Decode(byte[] data, int offset, int length, ByteOrder order)
-    {
-        var slice = new ArraySegment<byte>(data, offset, length).ToArray();
-        return (slice, length);
-    }
-
     public static byte[] ParseHex(string s)
     {
         var clean = s.Replace(" ", "").Replace("0x", "");

@@ -1,32 +1,23 @@
 {
   "name": "demo-mcu",
-  "version": "1.0",
+  "version": "2.0",
   "defaultByteOrder": "little",
-  "framing": {
-    "mode": "length-prefix",
-    "preamble": ["0xAA", "0x55"],
-    "lengthField": "len",
-    "frameTimeoutMs": 50
-  },
-  "layout": [
-    { "name": "preamble", "kind": "literal",  "codec": "bytes", "value": ["0xAA","0x55"] },
-    { "name": "len",      "kind": "computed", "codec": "u16",
-      "compute": { "algo": "length", "counts": ["payload"], "params": { "width": 2 } } },
-    { "name": "cmd",      "kind": "value",    "codec": "u8" },
-    { "name": "payload",  "kind": "value",    "codec": "bytes" },
-    { "name": "crc16",    "kind": "computed", "codec": "u16",
-      "compute": { "algo": "crc16",
-                   "over": { "from": "preamble", "to": "payload" },
-                   "params": { "poly":"0x1021","init":"0xFFFF","refIn":false,"refOut":false,"xorOut":"0x0000" } } }
+  "frameTimeoutMs": 50,
+  "frame": [
+    { "name": "preamble", "role": "fixed",   "width": 16, "value": ["0xAA", "0x55"] },
+    { "name": "len",      "role": "length",  "width": 16, "byteOrder": "little", "counts": ["payload"] },
+    { "name": "cmd",      "role": "value",   "width": 8 },
+    { "name": "payload",  "role": "value" },
+    { "name": "crc",      "role": "checksum","width": 16, "byteOrder": "little", "algo": "crc16",
+      "over": { "from": "preamble", "to": "payload" },
+      "params": { "poly": "0x1021", "init": "0xFFFF", "refIn": false, "refOut": false, "xorOut": "0x0000" } }
   ],
   "commands": [
-    { "name": "readVersion", "title": "Read Version",
-      "fix": { "cmd": "0x01" }, "payloadFields": [] },
-    { "name": "writeConfig", "title": "Write Config",
-      "fix": { "cmd": "0x05" },
-      "payloadFields": [
-        { "name": "id",    "codec": "u8",  "default": "0" },
-        { "name": "value", "codec": "u16", "default": "0" }
+    { "name": "readVersion", "title": "Read Version", "values": { "cmd": "0x01" } },
+    { "name": "writeConfig", "title": "Write Config", "values": { "cmd": "0x05" },
+      "payload": [
+        { "name": "id",    "role": "value", "width": 8,  "default": "0" },
+        { "name": "value", "role": "value", "width": 16, "byteOrder": "little", "default": "0" }
       ] }
   ]
 }

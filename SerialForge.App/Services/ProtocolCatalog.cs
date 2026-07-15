@@ -1,5 +1,4 @@
-using SerialForge.Core.Engine;
-using SerialForge.Core.Models;
+using SerialForge.Core.SegmentModel;
 
 namespace SerialForge.App.Services;
 

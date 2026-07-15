@@ -1,16 +1,23 @@
 using SerialForge.Core.Engine;
-using SerialForge.Core.Models;
+using SerialForge.Core.SegmentModel;
 using SerialForge.Transport;
+using SegLoader = SerialForge.Core.SegmentModel.ProtocolLoader;
 
 namespace SerialForge.Tests.Transport;
 
 public class FramerTest
 {
     private static ProtocolDefinition Def() =>
-        ProtocolLoader.Load(File.ReadAllText("Fixtures/demo-mcu.json"));
+        SegLoader.Load(File.ReadAllText("Fixtures/demo-mcu.json"));
 
-    private static byte[] MakeFrame() =>
-        new ProtocolEngine(Def()).Encode(new CommandInstance { Command = Def().Commands[0] });
+    private static byte[] MakeFrame()
+    {
+        var def = Def();
+        var cmd = def.Commands[0];
+        var values = new Dictionary<string, object>();
+        foreach (var kv in cmd.Values) values[kv.Key] = kv.Value;
+        return new FrameEngine(def.Frame, def.DefaultByteOrder).Pack(values, cmd.Payload);
+    }
 
     [Fact]
     public void LengthPrefix_frames_byte_at_a_time()

@@ -4,36 +4,10 @@
         xmlns:vm="clr-namespace:SerialForge.App.ViewModels"
         xmlns:c="clr-namespace:SerialForge.App.Converters"
         xmlns:core="clr-namespace:SerialForge.Core;assembly=SerialForge.Core"
-        Title="协议编辑器" Height="720" Width="980">
+        Title="协议编辑器" Height="760" Width="1040">
     <Window.Resources>
         <c:ByteOrderConverter x:Key="ByteOrder"/>
-        <x:Array x:Key="Kinds" Type="{x:Type core:FieldKind}">
-            <core:FieldKind>Literal</core:FieldKind><core:FieldKind>Value</core:FieldKind><core:FieldKind>Computed</core:FieldKind>
-        </x:Array>
-        <x:Array x:Key="Codecs" Type="{x:Type core:CodecType}">
-            <core:CodecType>U8</core:CodecType><core:CodecType>U16</core:CodecType><core:CodecType>U32</core:CodecType>
-            <core:CodecType>Bytes</core:CodecType><core:CodecType>String</core:CodecType><core:CodecType>Raw</core:CodecType>
-        </x:Array>
-        <x:Array x:Key="Modes" Type="{x:Type core:FramingMode}">
-            <core:FramingMode>LengthPrefix</core:FramingMode><core:FramingMode>Delimiter</core:FramingMode><core:FramingMode>Timeout</core:FramingMode>
-        </x:Array>
-        <DataTemplate x:Key="BitFieldRow" DataType="{x:Type vm:BitFieldEditorViewModel}">
-            <StackPanel Orientation="Horizontal" Margin="0,1">
-                <TextBox Text="{Binding Name}" Width="70" Margin="1" ToolTip="位字段名"/>
-                <TextBlock Text="off:" VerticalAlignment="Center"/>
-                <TextBox Text="{Binding Offset}" Width="34" Margin="1" ToolTip="位偏移(0=最高位)"/>
-                <TextBlock Text="w:" VerticalAlignment="Center"/>
-                <TextBox Text="{Binding Width}" Width="30" Margin="1" ToolTip="位宽"/>
-                <TextBox Text="{Binding Default}" Width="46" Margin="1" ToolTip="默认值"/>
-                <TextBox Text="{Binding Enum}" Width="120" Margin="1" ToolTip="枚举，如 0:idle,1:run"/>
-                <CheckBox Content="长度" IsChecked="{Binding IsLength}" Margin="3,0"
-                          Visibility="{Binding CanSetIsLength, Converter={x:Static c:VisibilityConverter.Instance}}"
-                          ToolTip="把此位标记为自动计算的长度位（仅 length 字段；整字节里只能选一位）"/>
-                <Button Content="✕" Width="20" Margin="1,0" Padding="0" Foreground="#C00"
-                        Command="{Binding DataContext.RemoveBitCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                        CommandParameter="{Binding}"/>
-            </StackPanel>
-        </DataTemplate>
+        <c:VisibilityConverter x:Key="Vis"/>
     </Window.Resources>
     <Grid Margin="6">
         <Grid.RowDefinitions>
@@ -42,102 +16,94 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- File bar -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="2">
             <TextBlock Text="文件：" VerticalAlignment="Center"/>
-            <TextBox Text="{Binding FilePath}" Width="320" IsReadOnly="True" Margin="4,0"/>
+            <TextBox Text="{Binding FilePath}" Width="300" IsReadOnly="True" Margin="4,0"/>
             <Button Content="打开…" Command="{Binding Open}" Margin="4,0"/>
             <Button Content="另存为…" Command="{Binding SaveAs}" Margin="4,0"/>
         </StackPanel>
 
-        <!-- Tabs: 可视化 / 原始 JSON -->
         <TabControl Grid.Row="1" Margin="2,4">
             <TabItem Header="可视化">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="2">
                     <StackPanel>
-                        <!-- Framing -->
-                        <GroupBox Header="成帧 Framing" Margin="2,4">
-                            <StackPanel Margin="2">
-                                <StackPanel Orientation="Horizontal" Margin="0,2">
-                                    <TextBlock Text="协议名：" VerticalAlignment="Center" Width="60"/>
-                                    <TextBox Text="{Binding Name}" Width="120" Margin="4,0,12,0"/>
-                                    <TextBlock Text="版本：" VerticalAlignment="Center"/>
-                                    <TextBox Text="{Binding Version}" Width="50" Margin="4,0,12,0"/>
-                                    <TextBlock Text="默认字节序：" VerticalAlignment="Center"/>
-                                    <ComboBox ItemsSource="{x:Static c:ByteOrderConverter.OptionsFixed}" SelectedItem="{Binding DefaultByteOrder, Converter={StaticResource ByteOrder}}" Width="70" Margin="4,0"/>
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,2">
-                                    <TextBlock Text="成帧模式：" VerticalAlignment="Center" Width="60"/>
-                                    <ComboBox ItemsSource="{StaticResource Modes}" SelectedItem="{Binding FramingMode}" Width="110" Margin="4,0,12,0"/>
-                                    <TextBlock Text="前导字节：" VerticalAlignment="Center"/>
-                                    <TextBox Text="{Binding Preamble}" Width="100" Margin="4,0,12,0"/>
-                                    <TextBlock Text="长度字段：" VerticalAlignment="Center"/>
-                                    <TextBox Text="{Binding LengthField}" Width="60" Margin="4,0,12,0"/>
-                                    <TextBlock Text="超时(ms)：" VerticalAlignment="Center"/>
-                                    <TextBox Text="{Binding FrameTimeoutMs}" Width="50" Margin="4,0"/>
-                                </StackPanel>
+                        <!-- Header -->
+                        <GroupBox Header="协议" Margin="2,4">
+                            <StackPanel Orientation="Horizontal" Margin="2">
+                                <TextBlock Text="名称：" VerticalAlignment="Center"/>
+                                <TextBox Text="{Binding Name}" Width="120" Margin="4,0,12,0"/>
+                                <TextBlock Text="版本：" VerticalAlignment="Center"/>
+                                <TextBox Text="{Binding Version}" Width="50" Margin="4,0,12,0"/>
+                                <TextBlock Text="默认字节序：" VerticalAlignment="Center"/>
+                                <ComboBox ItemsSource="{x:Static c:ByteOrderConverter.OptionsFixed}" SelectedItem="{Binding DefaultByteOrder, Converter={StaticResource ByteOrder}}" Width="70" Margin="4,0,12,0"/>
+                                <TextBlock Text="帧超时(ms)：" VerticalAlignment="Center"/>
+                                <TextBox Text="{Binding FrameTimeoutMs}" Width="50" Margin="4,0"/>
                             </StackPanel>
                         </GroupBox>
 
-                        <!-- Layout -->
-                        <GroupBox Header="帧字段 Layout（顺序即字节顺序）" Margin="2,4">
+                        <!-- Frame segments -->
+                        <GroupBox Header="帧字段 Frame（顺序即字节顺序）" Margin="2,4">
                             <StackPanel>
-                                <ItemsControl ItemsSource="{Binding LayoutFields}">
+                                <ItemsControl ItemsSource="{Binding Segments}">
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="{x:Type vm:LayoutFieldViewModel}">
+                                        <DataTemplate DataType="{x:Type vm:SegmentViewModel}">
                                             <Border BorderBrush="#DDD" BorderThickness="0,0,0,1" Padding="2">
                                                 <StackPanel>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <Button Content="↑" Width="22" Margin="1" Padding="0"
-                                                            Command="{Binding DataContext.MoveLayoutFieldUp, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            CommandParameter="{Binding}"/>
-                                                    <Button Content="↓" Width="22" Margin="1" Padding="0"
-                                                            Command="{Binding DataContext.MoveLayoutFieldDown, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            CommandParameter="{Binding}"/>
-                                                    <Button Content="✕" Width="22" Margin="1,1,6,1" Padding="0" Foreground="#C00"
-                                                            Command="{Binding DataContext.RemoveLayoutField, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            CommandParameter="{Binding}"/>
-                                                    <TextBox Text="{Binding Name}" Width="80" Margin="2" ToolTip="名称"/>
-                                                    <ComboBox ItemsSource="{StaticResource Kinds}" SelectedItem="{Binding Kind}" Width="74" Margin="2"/>
-                                                    <ComboBox ItemsSource="{StaticResource Codecs}" SelectedItem="{Binding Codec}" Width="64" Margin="2"/>
-                                                    <ComboBox ItemsSource="{x:Static c:ByteOrderConverter.Options}" SelectedItem="{Binding ByteOrder, Converter={StaticResource ByteOrder}}" Width="58" Margin="2" ToolTip="字节序（默认=用协议默认）"/>
-                                                    <TextBox Text="{Binding LiteralValue}" Width="80" Margin="2" ToolTip="literal 字节，如 AA 55"/>
-                                                    <TextBox Text="{Binding Size, TargetNullValue=''}" Width="40" Margin="2" ToolTip="size"/>
-                                                    <TextBox Text="{Binding Default}" Width="50" Margin="2" ToolTip="value 默认值"/>
-                                                    <StackPanel Orientation="Vertical" Margin="6,0" Visibility="{Binding Compute.IsLength, Converter={x:Static c:VisibilityConverter.Instance}}">
-                                                        <TextBlock Text="length: counts / offset" FontSize="10" Foreground="Gray"/>
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <TextBox Text="{Binding Compute.Counts}" Width="120" Margin="2"/>
-                                                            <TextBox Text="{Binding Compute.Offset}" Width="50" Margin="2"/>
-                                                        </StackPanel>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Button Content="↑" Width="22" Margin="1" Padding="0"
+                                                                Command="{Binding DataContext.MoveSegmentUp, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
+                                                        <Button Content="↓" Width="22" Margin="1" Padding="0"
+                                                                Command="{Binding DataContext.MoveSegmentDown, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
+                                                        <Button Content="✕" Width="22" Margin="1,1,6,1" Padding="0" Foreground="#C00"
+                                                                Command="{Binding DataContext.RemoveSegment, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
+                                                        <TextBox Text="{Binding Name}" Width="80" Margin="2" ToolTip="名称"/>
+                                                        <TextBlock Text="角色：" VerticalAlignment="Center"/>
+                                                        <ComboBox ItemsSource="{x:Static vm:SegmentViewModel.Roles}" SelectedItem="{Binding Role}" Width="74" Margin="2"/>
+                                                        <TextBlock Text="位宽：" VerticalAlignment="Center"/>
+                                                        <TextBox Text="{Binding Width}" Width="40" Margin="2" ToolTip="位宽（留空=变长payload）"/>
+                                                        <ComboBox ItemsSource="{x:Static c:ByteOrderConverter.Options}" SelectedItem="{Binding ByteOrder, Converter={StaticResource ByteOrder}}" Width="58" Margin="2" ToolTip="字节序（默认=协议默认）"/>
                                                     </StackPanel>
-                                                    <StackPanel Orientation="Vertical" Margin="6,0" Visibility="{Binding Compute.IsCrc, Converter={x:Static c:VisibilityConverter.Instance}}">
-                                                        <TextBlock Text="crc: from · to · poly · init · xorOut · refIn/refOut" FontSize="10" Foreground="Gray"/>
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <TextBox Text="{Binding Compute.From}" Width="56" Margin="1"/>
-                                                            <TextBox Text="{Binding Compute.To}" Width="56" Margin="1"/>
-                                                            <TextBox Text="{Binding Compute.Poly}" Width="56" Margin="1"/>
-                                                            <TextBox Text="{Binding Compute.Init}" Width="56" Margin="1"/>
-                                                            <TextBox Text="{Binding Compute.XorOut}" Width="56" Margin="1"/>
-                                                            <CheckBox Content="refIn" IsChecked="{Binding Compute.RefIn}" Margin="2,0"/>
-                                                            <CheckBox Content="refOut" IsChecked="{Binding Compute.RefOut}" Margin="2,0"/>
-                                                        </StackPanel>
+                                                    <!-- Fixed -->
+                                                    <StackPanel Orientation="Horizontal" Margin="24,2,0,2" Visibility="{Binding IsFixed, Converter={StaticResource Vis}}">
+                                                        <TextBlock Text="value(hex)：" VerticalAlignment="Center"/>
+                                                        <TextBox Text="{Binding Value}" Width="120" Margin="2" ToolTip="如 AA 55"/>
                                                     </StackPanel>
-                                                    <CheckBox Content="位域" IsChecked="{Binding IsBitField}" Margin="6,0"
-                                                              ToolTip="把此 u8 字段拆成多个位字段（value 或 length 字段；勾选后强制 u8。length 字段需用子行的「长度」勾选指定位域中哪一位承载自动计算的长度）"/>
-                                                </StackPanel>
-                                                <StackPanel Margin="24,2,0,2"
-                                                            Visibility="{Binding IsBitField, Converter={x:Static c:VisibilityConverter.Instance}}">
-                                                    <ItemsControl ItemsSource="{Binding Bits}" ItemTemplate="{StaticResource BitFieldRow}"/>
-                                                    <Button Content="+ 位字段" Width="64" Margin="2" Padding="2" HorizontalAlignment="Left"
-                                                            Command="{Binding AddBitCommand}"/>
-                                                </StackPanel>
+                                                    <!-- Value -->
+                                                    <StackPanel Orientation="Horizontal" Margin="24,2,0,2" Visibility="{Binding IsValue, Converter={StaticResource Vis}}">
+                                                        <TextBlock Text="default：" VerticalAlignment="Center"/>
+                                                        <TextBox Text="{Binding Default}" Width="60" Margin="2"/>
+                                                        <TextBlock Text="enum：" VerticalAlignment="Center"/>
+                                                        <TextBox Text="{Binding Enum}" Width="140" Margin="2" ToolTip="0:idle,1:run"/>
+                                                    </StackPanel>
+                                                    <!-- Length -->
+                                                    <StackPanel Orientation="Horizontal" Margin="24,2,0,2" Visibility="{Binding IsLength, Converter={StaticResource Vis}}">
+                                                        <TextBlock Text="counts：" VerticalAlignment="Center"/>
+                                                        <TextBox Text="{Binding Counts}" Width="120" Margin="2" ToolTip="计入长度的字段名，逗号分隔"/>
+                                                        <TextBlock Text="offset：" VerticalAlignment="Center"/>
+                                                        <TextBox Text="{Binding Offset}" Width="50" Margin="2"/>
+                                                    </StackPanel>
+                                                    <!-- Checksum -->
+                                                    <StackPanel Orientation="Horizontal" Margin="24,2,0,2" Visibility="{Binding IsChecksum, Converter={StaticResource Vis}}">
+                                                        <TextBlock Text="algo：" VerticalAlignment="Center"/>
+                                                        <ComboBox ItemsSource="{x:Static vm:SegmentViewModel.Algos}" SelectedItem="{Binding Algo}" Width="60" Margin="2"/>
+                                                        <TextBlock Text="from：" VerticalAlignment="Center"/>
+                                                        <TextBox Text="{Binding OverFrom}" Width="56" Margin="2"/>
+                                                        <TextBlock Text="to：" VerticalAlignment="Center"/>
+                                                        <TextBox Text="{Binding OverTo}" Width="56" Margin="2"/>
+                                                    </StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Margin="24,2,0,2" Visibility="{Binding IsCrc, Converter={StaticResource Vis}}">
+                                                        <TextBlock Text="poly：" VerticalAlignment="Center"/><TextBox Text="{Binding Poly}" Width="56" Margin="1"/>
+                                                        <TextBlock Text="init：" VerticalAlignment="Center"/><TextBox Text="{Binding Init}" Width="56" Margin="1"/>
+                                                        <TextBlock Text="xorOut：" VerticalAlignment="Center"/><TextBox Text="{Binding XorOut}" Width="56" Margin="1"/>
+                                                        <CheckBox Content="refIn" IsChecked="{Binding RefIn}" Margin="2,0"/>
+                                                        <CheckBox Content="refOut" IsChecked="{Binding RefOut}" Margin="2,0"/>
+                                                    </StackPanel>
                                                 </StackPanel>
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <Button Content="+ 添加字段" Command="{Binding AddLayoutField}" Margin="2,4" HorizontalAlignment="Left" Padding="6,2"/>
+                                <Button Content="+ 添加字段" Command="{Binding AddSegment}" Margin="2,4" HorizontalAlignment="Left" Padding="6,2"/>
                             </StackPanel>
                         </GroupBox>
 
@@ -151,20 +117,16 @@
                                                 <StackPanel Margin="2">
                                                     <StackPanel Orientation="Horizontal">
                                                         <Button Content="✕" Width="22" Margin="1,1,6,1" Padding="0" Foreground="#C00"
-                                                                Command="{Binding DataContext.RemoveCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                                CommandParameter="{Binding}"/>
+                                                                Command="{Binding DataContext.RemoveCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
                                                         <TextBlock Text="name：" VerticalAlignment="Center"/>
                                                         <TextBox Text="{Binding Name}" Width="110" Margin="4,0"/>
                                                         <TextBlock Text="title：" VerticalAlignment="Center" Margin="8,0,0,0"/>
                                                         <TextBox Text="{Binding Title}" Width="120" Margin="4,0"/>
                                                     </StackPanel>
-                                                    <!-- Fix entries -->
                                                     <StackPanel Orientation="Horizontal" Margin="20,2,0,0">
-                                                        <TextBlock Text="fix：" VerticalAlignment="Center"/>
-                                                        <ItemsControl ItemsSource="{Binding Fix}">
-                                                            <ItemsControl.ItemsPanel>
-                                                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
-                                                            </ItemsControl.ItemsPanel>
+                                                        <TextBlock Text="values：" VerticalAlignment="Center"/>
+                                                        <ItemsControl ItemsSource="{Binding Values}">
+                                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                                             <ItemsControl.ItemTemplate>
                                                                 <DataTemplate DataType="{x:Type vm:FixEntry}">
                                                                     <StackPanel Orientation="Horizontal" Margin="2,0">
@@ -172,44 +134,12 @@
                                                                         <TextBlock Text="=" VerticalAlignment="Center"/>
                                                                         <TextBox Text="{Binding Value}" Width="70" Margin="1"/>
                                                                         <Button Content="✕" Width="20" Margin="1,0" Padding="0" Foreground="#C00"
-                                                                                Command="{Binding DataContext.RemoveFix, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                                                CommandParameter="{Binding}"/>
+                                                                                Command="{Binding DataContext.RemoveValue, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
                                                                     </StackPanel>
                                                                 </DataTemplate>
                                                             </ItemsControl.ItemTemplate>
                                                         </ItemsControl>
-                                                        <Button Content="+ fix" Width="44" Margin="4,0" Padding="2" Command="{Binding AddFix}"/>
-                                                    </StackPanel>
-                                                    <!-- Payload fields -->
-                                                    <StackPanel Margin="20,2,0,0">
-                                                        <TextBlock Text="负载字段："/>
-                                                        <ItemsControl ItemsSource="{Binding PayloadFields}">
-                                                            <ItemsControl.ItemTemplate>
-                                                                <DataTemplate DataType="{x:Type vm:PayloadFieldViewModel}">
-                                                                    <StackPanel>
-                                                                    <StackPanel Orientation="Horizontal" Margin="0,1">
-                                                                        <TextBox Text="{Binding Name}" Width="80" Margin="2"/>
-                                                                        <ComboBox ItemsSource="{StaticResource Codecs}" SelectedItem="{Binding Codec}" Width="64" Margin="2"/>
-                                                                        <ComboBox ItemsSource="{x:Static c:ByteOrderConverter.Options}" SelectedItem="{Binding ByteOrder, Converter={StaticResource ByteOrder}}" Width="58" Margin="2"/>
-                                                                        <TextBox Text="{Binding Size, TargetNullValue=''}" Width="40" Margin="2" ToolTip="size"/>
-                                                                        <TextBox Text="{Binding Default}" Width="50" Margin="2" ToolTip="default"/>
-                                                                        <Button Content="✕" Width="20" Margin="1,0" Padding="0" Foreground="#C00"
-                                                                                Command="{Binding DataContext.RemovePayloadField, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                                                CommandParameter="{Binding}"/>
-                                                                        <CheckBox Content="位域" IsChecked="{Binding IsBitField}" Margin="6,0"
-                                                                                  ToolTip="把此 u8 字段拆成多个位字段（勾选后强制 u8）"/>
-                                                                    </StackPanel>
-                                                                    <StackPanel Margin="24,2,0,2"
-                                                                                Visibility="{Binding IsBitField, Converter={x:Static c:VisibilityConverter.Instance}}">
-                                                                        <ItemsControl ItemsSource="{Binding Bits}" ItemTemplate="{StaticResource BitFieldRow}"/>
-                                                                        <Button Content="+ 位字段" Width="64" Margin="2" Padding="2" HorizontalAlignment="Left"
-                                                                                Command="{Binding AddBitCommand}"/>
-                                                                    </StackPanel>
-                                                                    </StackPanel>
-                                                                </DataTemplate>
-                                                            </ItemsControl.ItemTemplate>
-                                                        </ItemsControl>
-                                                        <Button Content="+ 负载字段" Command="{Binding AddPayloadField}" Margin="2,2" HorizontalAlignment="Left" Padding="6,2"/>
+                                                        <Button Content="+ value" Width="50" Margin="4,0" Padding="2" Command="{Binding AddValue}"/>
                                                     </StackPanel>
                                                 </StackPanel>
                                             </Border>
@@ -224,25 +154,19 @@
             </TabItem>
             <TabItem Header="原始 JSON">
                 <Grid Margin="2">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="2">
                         <Button Content="刷新（JSON ← 可视化）" Command="{Binding RefreshRaw}" Margin="2,0"/>
                         <Button Content="应用（可视化 ← JSON）" Command="{Binding ApplyRaw}" Margin="2,0"/>
-                        <TextBlock Text="先点[刷新]再编辑；改完点[应用]回填可视化页" VerticalAlignment="Center" Margin="8,0" Foreground="Gray"/>
+                        <TextBlock Text="payload 子模板等高级结构在此编辑" VerticalAlignment="Center" Margin="8,0" Foreground="Gray"/>
                     </StackPanel>
                     <TextBox Grid.Row="1" Text="{Binding RawJson, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
                 </Grid>
             </TabItem>
         </TabControl>
 
-        <!-- Bottom bar -->
         <Grid Grid.Row="2" Margin="2,6">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <TextBlock Grid.Column="0" Text="{Binding ErrorMessage}" Foreground="#C00" TextWrapping="Wrap" VerticalAlignment="Center"/>
             <Button Grid.Column="1" Content="取消" Width="80" Margin="4,0" Click="Cancel_Click"/>
             <Button Grid.Column="2" Content="应用" Width="80" Margin="4,0" Command="{Binding Apply}"/>

@@ -11,4 +11,5 @@ public sealed record ProtocolDefinition(
     string Version,
     ByteOrder DefaultByteOrder,
     Segment[] Frame,
-    CommandDef[] Commands);
+    CommandDef[] Commands,
+    int FrameTimeoutMs = 50);

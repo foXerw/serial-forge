@@ -28,7 +28,7 @@ public static class ProtocolLoader
         var order = dto.DefaultByteOrder == "big" ? ByteOrder.Big : ByteOrder.Little;
         var frame = dto.Frame!.Select(ToSegment).ToArray();
         var commands = dto.Commands!.Select(ToCommand).ToArray();
-        var def = new ProtocolDefinition(dto.Name!, dto.Version!, order, frame, commands);
+        var def = new ProtocolDefinition(dto.Name!, dto.Version!, order, frame, commands, dto.FrameTimeoutMs ?? 50);
         Validate(def);
         return def;
     }
@@ -148,7 +148,7 @@ public static class ProtocolLoader
     #pragma warning disable CS0649
     private static class Dto
     {
-        public sealed class ProtocolDto { public string? Name; public string? Version; public string? DefaultByteOrder; public SegmentDto[]? Frame; public CommandDto[]? Commands; }
+        public sealed class ProtocolDto { public string? Name; public string? Version; public string? DefaultByteOrder; public SegmentDto[]? Frame; public CommandDto[]? Commands; public int? FrameTimeoutMs; }
         public sealed class SegmentDto
         {
             public string? Name; public string? Role; public int? Width; public string? ByteOrder;

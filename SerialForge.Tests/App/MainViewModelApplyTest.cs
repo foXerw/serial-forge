@@ -1,26 +1,24 @@
 using SerialForge.App.ViewModels;
-using SerialForge.Core.Engine;
-using SerialForge.Core.Models;
+using SerialForge.Core.SegmentModel;
+using SegLoader = SerialForge.Core.SegmentModel.ProtocolLoader;
 
 namespace SerialForge.Tests.App;
 
 public class MainViewModelApplyTest
 {
     private static ProtocolDefinition Def(string cmdName) =>
-        ProtocolLoader.Load(@"{
-          ""name"": ""p"", ""version"": ""1"", ""defaultByteOrder"": ""little"",
-          ""framing"": { ""mode"": ""length-prefix"", ""preamble"": [""0xAA""], ""lengthField"": ""len"", ""frameTimeoutMs"": 50 },
-          ""layout"": [
-            { ""name"": ""preamble"", ""kind"": ""literal"", ""codec"": ""bytes"", ""value"": [""0xAA""] },
-            { ""name"": ""len"", ""kind"": ""computed"", ""codec"": ""u16"", ""compute"": { ""algo"": ""length"", ""counts"": [""payload""] } },
-            { ""name"": ""cmd"", ""kind"": ""value"", ""codec"": ""u8"" },
-            { ""name"": ""payload"", ""kind"": ""value"", ""codec"": ""bytes"" },
-            { ""name"": ""crc16"", ""kind"": ""computed"", ""codec"": ""u16"",
-              ""compute"": { ""algo"": ""crc16"", ""over"": { ""from"": ""preamble"", ""to"": ""payload"" } } }
+        SegLoader.Load(@"{
+          ""name"": ""p"", ""version"": ""1"", ""defaultByteOrder"": ""little"", ""frameTimeoutMs"": 50,
+          ""frame"": [
+            { ""name"": ""preamble"", ""role"": ""fixed"",   ""width"": 16, ""value"": [""0xAA"", ""0x55""] },
+            { ""name"": ""len"",      ""role"": ""length"",  ""width"": 16, ""byteOrder"": ""little"", ""counts"": [""payload""] },
+            { ""name"": ""cmd"",      ""role"": ""value"",   ""width"": 8 },
+            { ""name"": ""payload"",  ""role"": ""value"" },
+            { ""name"": ""crc"",      ""role"": ""checksum"",""width"": 16, ""byteOrder"": ""little"", ""algo"": ""crc16"",
+              ""over"": { ""from"": ""preamble"", ""to"": ""payload"" },
+              ""params"": { ""poly"": ""0x1021"", ""init"": ""0xFFFF"", ""refIn"": false, ""refOut"": false, ""xorOut"": ""0x0000"" } }
           ],
-          ""commands"": [
-            { ""name"": """ + cmdName + @""", ""title"": ""T"", ""fix"": { ""cmd"": ""0x01"" }, ""payloadFields"": [] }
-          ]
+          ""commands"": [ { ""name"": """ + cmdName + @""", ""title"": ""T"", ""values"": { ""cmd"": ""0x01"" } } ]
         }");
 
     [Fact]

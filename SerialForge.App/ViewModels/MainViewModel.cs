@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SerialForge.App.Services;
 using SerialForge.Core.Engine;
-using SerialForge.Core.Models;
+using SerialForge.Core.SegmentModel;
 using SerialForge.Transport;
 
 namespace SerialForge.App.ViewModels;
@@ -20,8 +20,8 @@ public partial class MainViewModel : ViewModelBase
     // Window title: shows which protocol is loaded, updates on hot-swap.
     public string CurrentProtocolName => _currentDef is null ? "SerialForge" : $"SerialForge — {_currentDef.Name}";
 
-    private ProtocolEngine _engine;
-    private FrameDispatcher _dispatcher;
+    private FrameEngine _engine = null!;
+    private FrameDispatcher _dispatcher = null!;
     private ProtocolDefinition? _currentDef;
     private readonly IDialogService? _dialogs;
     private ITransport? _subscribedTransport;
@@ -53,8 +53,8 @@ public partial class MainViewModel : ViewModelBase
         Log = new LogViewModel();
         Connection = new ConnectionViewModel();
         _currentDef = def;
-        _engine = def is null ? null! : new ProtocolEngine(def);
-        _dispatcher = new FrameDispatcher(_engine, a => UiDispatcher.Marshal(a));
+        _engine = def is null ? null! : new FrameEngine(def.Frame, def.DefaultByteOrder);
+        _dispatcher = new FrameDispatcher(_engine, def!, a => UiDispatcher.Marshal(a));
         _dispatcher.FrameDecoded += (_, f) => UiDispatcher.Marshal(() => Log.AddRx(f));
 
         _onBytes = (_, bytes) => _dispatcher.OnBytes(bytes);
@@ -63,7 +63,7 @@ public partial class MainViewModel : ViewModelBase
         {
             UiDispatcher.Marshal(() =>
             {
-                if (_engine is not null) Log.AddTx(frame, _engine.Decode(frame));
+                if (_engine is not null) Log.AddTx(frame, _engine.Parse(frame));
                 else Log.AddTx(frame);
             });
             var t = Connection.Transport;
@@ -79,7 +79,7 @@ public partial class MainViewModel : ViewModelBase
             try { t.Write(bytes); }
             catch (Exception ex) { UiDispatcher.Marshal(() => System.Diagnostics.Debug.WriteLine("raw write failed: " + ex.Message)); }
         }
-        CommandPanel = new CommandPanelViewModel(_engine, Send, msg => Log.AddError(msg));
+        CommandPanel = new CommandPanelViewModel(_engine, def!, Send, msg => Log.AddError(msg));
         RawSend = new RawSendViewModel(SendRaw, msg => Log.AddError(msg));
         Log.ResendCallback = SendRaw;   // let the log re-send an entry's bytes
         if (def is not null) CommandPanel.Load(def);
@@ -134,11 +134,11 @@ public partial class MainViewModel : ViewModelBase
         });
         OpenUpgrade = new RelayCommand(() =>
         {
-            if (_dialogs is null) return;
+            if (_dialogs is null || _currentDef is null) return;
             var transport = Connection.Transport;
             if (transport is null || !transport.IsOpen) { Log.AddError("固件升级需要先连接串口"); return; }
-            var runner = new UpgradeRunner(_engine, _dispatcher, transport,
-                frame => Log.AddTx(frame, _engine.Decode(frame)));
+            var runner = new UpgradeRunner(_engine, _currentDef, _dispatcher, transport,
+                frame => Log.AddTx(frame, _engine.Parse(frame)));
             _dialogs.ShowUpgrade(new UpgradeViewModel(_dialogs, runner));
         });
     }
@@ -149,8 +149,8 @@ public partial class MainViewModel : ViewModelBase
     {
         _currentDef = def;
         OnPropertyChanged(nameof(CurrentProtocolName));
-        _engine = new ProtocolEngine(def);
-        _dispatcher = new FrameDispatcher(_engine, a => UiDispatcher.Marshal(a));
+        _engine = new FrameEngine(def.Frame, def.DefaultByteOrder);
+        _dispatcher = new FrameDispatcher(_engine, def, a => UiDispatcher.Marshal(a));
         _dispatcher.FrameDecoded += (_, f) => UiDispatcher.Marshal(() => Log.AddRx(f));
 
         if (_subscribedTransport is not null)

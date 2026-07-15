@@ -1,25 +1,25 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using SerialForge.Core;
 
 namespace SerialForge.App.ViewModels;
 
-// One editable row in the auto-generated command form. Mirrors a single
-// PayloadFieldDef: its Name/Codec are fixed, only Value is user-editable.
+// One editable row in the command form. Width-driven: a maxValue (derived from
+// the segment's bit width) bounds numeric input; null maxValue means free-form
+// hex (the variable payload segment, typed as a hex string).
 public partial class FieldEditorViewModel : ViewModelBase
 {
     [ObservableProperty] private string _value = "";
     [ObservableProperty] private string? _validationMessage;
 
     public string Name { get; }
-    public string Codec { get; }
     public bool IsReadOnly { get; }
+    public ulong? MaxValue { get; }       // null => free-form hex (payload)
     private readonly ulong? _maxValue;
 
-    public FieldEditorViewModel(string name, string codec, string? defaultValue, bool isReadOnly, ulong? maxValue = null)
+    public FieldEditorViewModel(string name, string? defaultValue, bool isReadOnly, ulong? maxValue = null)
     {
         Name = name;
-        Codec = codec;
         IsReadOnly = isReadOnly;
+        MaxValue = maxValue;
         _maxValue = maxValue;
         _value = defaultValue ?? "";
         Validate();
@@ -30,28 +30,17 @@ public partial class FieldEditorViewModel : ViewModelBase
 
     private void Validate()
     {
-        if (IsReadOnly || !Enum.TryParse<CodecType>(Codec, ignoreCase: true, out var codec))
-        {
-            ValidationMessage = null;
-            return;
-        }
+        if (IsReadOnly || string.IsNullOrWhiteSpace(Value)) { ValidationMessage = null; return; }
         if (_maxValue is { } max)
         {
             ValidationMessage = ValidateRange(Value, max, $"0–{max}");
             return;
         }
-        ValidationMessage = codec switch
-        {
-            CodecType.U8 => ValidateRange(Value, 0xFF, "0–255"),
-            CodecType.U16 => ValidateRange(Value, 0xFFFF, "0–65535"),
-            CodecType.U32 => ValidateRange(Value, 0xFFFFFFFFu, "0–4294967295"),
-            _ => null
-        };
+        ValidationMessage = null;   // free-form hex payload: no range check
     }
 
     private static string? ValidateRange(string text, ulong max, string range)
     {
-        if (string.IsNullOrWhiteSpace(text)) return null;   // empty: default/no value yet
         try
         {
             ulong v = text.StartsWith("0x", StringComparison.OrdinalIgnoreCase)

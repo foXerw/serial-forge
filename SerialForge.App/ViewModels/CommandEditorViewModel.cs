@@ -3,6 +3,7 @@ using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SerialForge.Core.Models;
+using SerialForge.Core.SegmentModel;
 
 namespace SerialForge.App.ViewModels;
 
@@ -14,35 +15,34 @@ public sealed partial class FixEntry : ViewModelBase
     public FixEntry(string field, string value) { _field = field; _value = value; }
 }
 
+// Edits a command's preset Values (field=value pairs). The optional Payload
+// sub-template is preserved across load/save for round-trip but not GUI-editable
+// (edit it via the raw-JSON tab).
 public sealed partial class CommandEditorViewModel : ViewModelBase
 {
     [ObservableProperty] private string _name = "";
     [ObservableProperty] private string _title = "";
-    public ObservableCollection<FixEntry> Fix { get; } = new();
-    public ObservableCollection<PayloadFieldViewModel> PayloadFields { get; } = new();
+    public ObservableCollection<FixEntry> Values { get; } = new();
+    public Segment[]? Payload { get; set; }
 
-    public ICommand AddPayloadField { get; }
-    public ICommand RemovePayloadField { get; }
-    public ICommand AddFix { get; }
-    public ICommand RemoveFix { get; }
+    public ICommand AddValue { get; }
+    public ICommand RemoveValue { get; }
 
     public CommandEditorViewModel()
     {
-        AddPayloadField = new RelayCommand(() => PayloadFields.Add(new PayloadFieldViewModel()));
-        RemovePayloadField = new RelayCommand<PayloadFieldViewModel>(p => PayloadFields.Remove(p!));
-        AddFix = new RelayCommand(() => Fix.Add(new FixEntry()));
-        RemoveFix = new RelayCommand<FixEntry>(e => Fix.Remove(e!));
+        AddValue = new RelayCommand(() => Values.Add(new FixEntry()));
+        RemoveValue = new RelayCommand<FixEntry>(e => Values.Remove(e!));
     }
     public CommandEditorViewModel(CommandDef c) : this()
     {
         _name = c.Name; _title = c.Title;
-        foreach (var kv in c.Fix) Fix.Add(new FixEntry(kv.Key, kv.Value));
-        foreach (var p in c.PayloadFields) PayloadFields.Add(new PayloadFieldViewModel(p));
+        foreach (var kv in c.Values) Values.Add(new FixEntry(kv.Key, kv.Value));
+        Payload = c.Payload;
     }
 
     public CommandDef ToDef() => new(
         Name,
         string.IsNullOrWhiteSpace(Title) ? Name : Title,
-        Fix.Where(f => !string.IsNullOrWhiteSpace(f.Field)).ToDictionary(f => f.Field, f => f.Value),
-        PayloadFields.Select(p => p.ToDef()).ToArray());
+        Values.Where(v => !string.IsNullOrWhiteSpace(v.Field)).ToDictionary(v => v.Field, v => v.Value),
+        Payload);
 }

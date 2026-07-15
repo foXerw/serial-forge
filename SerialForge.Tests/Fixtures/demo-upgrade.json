@@ -1,23 +1,37 @@
 {
   "name": "demo-upgrade",
-  "version": "1.0",
+  "version": "2.0",
   "defaultByteOrder": "little",
-  "framing": { "mode": "length-prefix", "preamble": ["0xAA","0x55"], "lengthField": "len", "frameTimeoutMs": 50 },
-  "layout": [
-    { "name": "preamble", "kind": "literal",  "codec": "bytes", "value": ["0xAA","0x55"] },
-    { "name": "len",      "kind": "computed", "codec": "u16",   "compute": { "algo": "length", "counts": ["payload"], "params": { "width": 2 } } },
-    { "name": "cmd",      "kind": "value",    "codec": "u8" },
-    { "name": "payload",  "kind": "value",    "codec": "bytes" },
-    { "name": "crc16",    "kind": "computed", "codec": "u16",   "compute": { "algo": "crc16", "over": { "from": "preamble", "to": "payload" }, "params": { "poly":"0x1021","init":"0xFFFF","refIn":false,"refOut":false,"xorOut":"0x0000" } } }
+  "frameTimeoutMs": 50,
+  "frame": [
+    { "name": "preamble", "role": "fixed",   "width": 16, "value": ["0xAA", "0x55"] },
+    { "name": "len",      "role": "length",  "width": 16, "byteOrder": "little", "counts": ["payload"] },
+    { "name": "cmd",      "role": "value",   "width": 8 },
+    { "name": "payload",  "role": "value" },
+    { "name": "crc",      "role": "checksum","width": 16, "byteOrder": "little", "algo": "crc16",
+      "over": { "from": "preamble", "to": "payload" },
+      "params": { "poly": "0x1021", "init": "0xFFFF", "refIn": false, "refOut": false, "xorOut": "0x0000" } }
   ],
   "commands": [
-    { "name": "startUpgrade",  "title": "开始升级", "fix": { "cmd": "0x10" },
-      "payloadFields": [ { "name": "totalSize", "codec": "u32", "default": "0" }, { "name": "totalCrc32", "codec": "u32", "default": "0" } ] },
-    { "name": "transferBlock", "title": "传输块",  "fix": { "cmd": "0x11" },
-      "payloadFields": [ { "name": "seq", "codec": "u16", "default": "0" }, { "name": "offset", "codec": "u32", "default": "0" }, { "name": "data", "codec": "bytes", "size": 64 } ] },
-    { "name": "endUpgrade",    "title": "结束升级", "fix": { "cmd": "0x12" },
-      "payloadFields": [ { "name": "totalCrc32", "codec": "u32", "default": "0" } ] },
-    { "name": "upgradeAck",    "title": "升级应答", "fix": { "cmd": "0x06" },
-      "payloadFields": [ { "name": "tag", "codec": "u8", "default": "0" }, { "name": "seq", "codec": "u16", "default": "0" } ] }
+    { "name": "startUpgrade",  "title": "开始升级", "values": { "cmd": "0x10" },
+      "payload": [
+        { "name": "totalSize",   "role": "value", "width": 32, "byteOrder": "little", "default": "0" },
+        { "name": "totalCrc32",  "role": "value", "width": 32, "byteOrder": "little", "default": "0" }
+      ] },
+    { "name": "transferBlock", "title": "传输块",   "values": { "cmd": "0x11" },
+      "payload": [
+        { "name": "seq",    "role": "value", "width": 16, "byteOrder": "little", "default": "0" },
+        { "name": "offset", "role": "value", "width": 32, "byteOrder": "little", "default": "0" },
+        { "name": "data",   "role": "value" }
+      ] },
+    { "name": "endUpgrade",    "title": "结束升级", "values": { "cmd": "0x12" },
+      "payload": [
+        { "name": "totalCrc32", "role": "value", "width": 32, "byteOrder": "little", "default": "0" }
+      ] },
+    { "name": "upgradeAck",    "title": "升级应答", "values": { "cmd": "0x06" },
+      "payload": [
+        { "name": "tag", "role": "value", "width": 8,  "default": "0" },
+        { "name": "seq", "role": "value", "width": 16, "byteOrder": "little", "default": "0" }
+      ] }
   ]
 }

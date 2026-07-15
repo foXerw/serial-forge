@@ -17,6 +17,7 @@ public static class ProtocolSaver
             name = def.Name,
             version = def.Version,
             defaultByteOrder = def.DefaultByteOrder == ByteOrder.Big ? "big" : "little",
+            frameTimeoutMs = def.FrameTimeoutMs,
             frame = def.Frame.Select(SegmentDto),
             commands = def.Commands.Select(CommandDto)
         };

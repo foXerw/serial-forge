@@ -1,23 +1,21 @@
-using SerialForge.Core.Engine;
 using SerialForge.Core.Models;
 
 namespace SerialForge.Transport;
 
-// Minimal step primitive: encode + send one command, await a matching decoded
-// frame, retry on timeout, propagate cancellation. Built on FrameDispatcher.Await.
+// Minimal step primitive: send one pre-encoded frame, await a matching decoded
+// frame, retry on timeout, propagate cancellation. The caller encodes (the frame
+// bytes are passed in); this only owns the send + await/retry loop.
 public sealed class FlowRunner
 {
-    private readonly ProtocolEngine _engine;
     private readonly FrameDispatcher _dispatcher;
     private readonly Action<byte[]> _send;
 
-    public FlowRunner(ProtocolEngine engine, FrameDispatcher dispatcher, Action<byte[]> send)
-    { _engine = engine; _dispatcher = dispatcher; _send = send; }
+    public FlowRunner(FrameDispatcher dispatcher, Action<byte[]> send)
+    { _dispatcher = dispatcher; _send = send; }
 
-    public async Task<DecodedFrame> SendExpect(CommandInstance inst, Func<DecodedFrame, bool> expect,
+    public async Task<DecodedFrame> SendExpect(byte[] frame, Func<DecodedFrame, bool> expect,
         int timeoutMs, int retries, CancellationToken ct)
     {
-        var frame = _engine.Encode(inst);
         int attempts = retries + 1;
         for (int i = 0; i < attempts; i++)
         {

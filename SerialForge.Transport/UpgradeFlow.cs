@@ -1,4 +1,6 @@
+using SerialForge.Core.Engine;
 using SerialForge.Core.Models;
+using SerialForge.Core.SegmentModel;
 
 namespace SerialForge.Transport;
 
@@ -7,16 +9,18 @@ public enum UpgradeStatus { Running, Done, Failed, Cancelled }
 public sealed record UpgradeProgress(int SentBlocks, int TotalBlocks, string Phase, UpgradeStatus Status, string? Detail = null);
 
 // Built-in firmware-upgrade flow on a FlowRunner: start -> per-chunk transfer -> end.
-// Progress reports after each ACKed transfer block; cancellation propagated cleanly.
+// Each step packs its command via the engine (using the command's payload template),
+// sends it, and awaits the matching ACK. Progress reports after each ACKed block.
 public sealed class UpgradeFlow
 {
     private readonly FlowRunner _runner;
+    private readonly FrameEngine _engine;
     private readonly ProtocolDefinition _def;
     private readonly int _timeoutMs;
     private readonly int _retries;
 
-    public UpgradeFlow(FlowRunner runner, ProtocolDefinition def, int timeoutMs, int retries)
-    { _runner = runner; _def = def; _timeoutMs = timeoutMs; _retries = retries; }
+    public UpgradeFlow(FlowRunner runner, FrameEngine engine, ProtocolDefinition def, int timeoutMs, int retries)
+    { _runner = runner; _engine = engine; _def = def; _timeoutMs = timeoutMs; _retries = retries; }
 
     public async Task<UpgradeStatus> RunAsync(FirmwareImage image, IProgress<UpgradeProgress>? progress, CancellationToken ct)
     {
@@ -56,15 +60,19 @@ public sealed class UpgradeFlow
 
     private async Task Step(string cmdName, Dictionary<string, object> payload, Func<DecodedFrame, bool> expect, CancellationToken ct)
     {
-        var inst = new CommandInstance { Command = _def.Commands.First(c => c.Name == cmdName), PayloadValues = payload };
-        await _runner.SendExpect(inst, expect, _timeoutMs, _retries, ct);
+        var cmd = _def.Commands.First(c => c.Name == cmdName);
+        var values = new Dictionary<string, object>();
+        foreach (var kv in cmd.Values) values[kv.Key] = kv.Value;     // preset (e.g. cmd)
+        foreach (var kv in payload) values[kv.Key] = kv.Value;        // per-step payload inputs
+        var frame = _engine.Pack(values, cmd.Payload);
+        await _runner.SendExpect(frame, expect, _timeoutMs, _retries, ct);
     }
 
-    // ACK = cmd==0x06. For transfer the caller additionally requires seq match.
+    // ACK = cmd==0x06; for transfer the caller additionally requires seq match.
     private static bool IsAck(DecodedFrame f) =>
         f.Fields.FirstOrDefault(x => x.Name == "cmd") is { } cmd && (ulong)cmd.Value! == 0x06;
 
-    // ACK payload layout: tag:u8 at [0], seq:u16le at [1..3].
+    // ACK payload (raw bytes): tag:u8 at [0], seq:u16le at [1..3].
     private static int AckSeq(DecodedFrame f)
     {
         var payload = (byte[])f.Fields.First(x => x.Name == "payload").Value!;

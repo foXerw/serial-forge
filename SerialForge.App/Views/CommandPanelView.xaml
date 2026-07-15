@@ -12,8 +12,7 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal" Margin="2">
-                        <TextBlock Text="{Binding Name}" Width="120" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding Codec}" Width="60" Foreground="Gray" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Name}" Width="140" VerticalAlignment="Center"/>
                         <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
                                  IsReadOnly="{Binding IsReadOnly}" MinWidth="200"/>
                         <TextBlock Text="{Binding ValidationMessage}" Foreground="#C00"

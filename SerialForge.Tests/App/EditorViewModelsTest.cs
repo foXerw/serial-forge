@@ -1,112 +1,53 @@
 using System.Text.Json;
 using SerialForge.App.ViewModels;
 using SerialForge.Core;
-using SerialForge.Core.Engine;
 using SerialForge.Core.Models;
+using SerialForge.Core.SegmentModel;
+using SegLoader = SerialForge.Core.SegmentModel.ProtocolLoader;
+using SegSaver = SerialForge.Core.SegmentModel.ProtocolSaver;
 
 namespace SerialForge.Tests.App;
 
 public class EditorViewModelsTest
 {
-    [Fact]
-    public void Crc_params_round_trip_through_compute_spec()
-    {
-        var spec = new ComputeSpec("crc16", null, 0, "preamble", "payload", new()
-        {
-            ["poly"] = JsonSerializer.SerializeToElement("0x1021"),
-            ["init"] = JsonSerializer.SerializeToElement("0xFFFF"),
-            ["xorOut"] = JsonSerializer.SerializeToElement("0x0000"),
-            ["refIn"] = JsonSerializer.SerializeToElement(false),
-            ["refOut"] = JsonSerializer.SerializeToElement(false),
-        });
+    private static ProtocolDefinition DemoDef() =>
+        SegLoader.Load(File.ReadAllText("Fixtures/demo-mcu.json"));
 
-        var vm = new ComputeEditorViewModel(spec);
+    private static Segment Seg(string name, SegmentRole role, int? width, params string[] counts) =>
+        new(name, role, width, null, null, null, null, counts.Length == 0 ? null : counts, 0, null, null, null, null);
+
+    [Fact]
+    public void Segment_view_model_round_trips_role_specific_fields()
+    {
+        var crc = new Segment("crc", SegmentRole.Checksum, 16, ByteOrder.Little, null, null, null, null, 0,
+            "crc16", "preamble", "payload", new()
+            {
+                ["poly"] = JsonSerializer.SerializeToElement("0x1021"),
+                ["init"] = JsonSerializer.SerializeToElement("0xFFFF"),
+                ["refIn"] = JsonSerializer.SerializeToElement(false),
+                ["refOut"] = JsonSerializer.SerializeToElement(false),
+                ["xorOut"] = JsonSerializer.SerializeToElement("0x0000"),
+            });
+        var vm = new SegmentViewModel(crc);
+        Assert.Equal(SegmentRole.Checksum, vm.Role);
+        Assert.Equal("crc16", vm.Algo);
         Assert.Equal("0x1021", vm.Poly);
         Assert.False(vm.RefIn);
-
-        var back = vm.ToComputeSpec();
+        var back = vm.ToSegment();
+        Assert.Equal("crc16", back.Algo);
         Assert.Equal("0x1021", back.Params!["poly"].GetString());
-        Assert.False(back.Params!["refIn"].GetBoolean());
     }
-
-    [Fact]
-    public void Blank_crc_hex_params_are_omitted_so_algo_defaults_apply()
-    {
-        // refIn/refOut are always emitted (defaults false); only blank HEX params
-        // (poly/init/xorOut) are omitted so the algorithm falls back to its defaults.
-        var vm = new ComputeEditorViewModel { Algo = "crc16", From = "preamble", To = "payload" };
-        var back = vm.ToComputeSpec();
-        Assert.NotNull(back.Params);
-        Assert.False(back.Params!.ContainsKey("poly"));
-        Assert.False(back.Params.ContainsKey("init"));
-        Assert.False(back.Params.ContainsKey("xorOut"));
-        Assert.False(back.Params["refIn"].GetBoolean());
-    }
-
-    [Fact]
-    public void Hex_is_normalized_to_lowercase_0x_prefix()
-    {
-        var vm = new ComputeEditorViewModel { Algo = "crc16", From = "a", To = "b", Poly = "ABCD" };
-        Assert.Equal("0xabcd", vm.ToComputeSpec().Params!["poly"].GetString());
-    }
-
-    [Fact]
-    public void Length_compute_reads_counts_and_offset()
-    {
-        var spec = new ComputeSpec("length", new[] { "payload" }, 0, null, null, null);
-        var vm = new ComputeEditorViewModel(spec);
-        Assert.Equal("payload", vm.Counts);
-        var back = vm.ToComputeSpec();
-        Assert.Equal(new[] { "payload" }, back.Counts);
-    }
-
-    [Fact]
-    public void Literal_value_round_trips_to_0x_hex_array()
-    {
-        var vm = new LayoutFieldViewModel
-        { Kind = FieldKind.Literal, Codec = CodecType.Bytes, LiteralValue = "AA 55" };
-        var def = vm.ToFieldDef();
-        Assert.Equal(new[] { "0xaa", "0x55" }, def.LiteralValue);
-    }
-
-    [Fact]
-    public void Length_compute_field_derives_width_from_codec()
-    {
-        var vm = new LayoutFieldViewModel
-        { Name = "len", Kind = FieldKind.Computed, Codec = CodecType.U16 };
-        vm.Compute.Algo = "length";
-        vm.Compute.Counts = "payload";
-        var def = vm.ToFieldDef();
-        Assert.Equal(2, def.Compute!.Params!["width"].GetInt32());
-    }
-
-    [Fact]
-    public void Command_round_trips_fix_and_payload_fields()
-    {
-        var src = new CommandDef("writeConfig", "Write Config",
-            new() { ["cmd"] = "0x05" },
-            new[] { new PayloadFieldDef("id", CodecType.U8, null, null, "0", null) });
-        var vm = new CommandEditorViewModel(src);
-        Assert.Equal("writeConfig", vm.Name);
-        Assert.Single(vm.Fix);
-        Assert.Single(vm.PayloadFields);
-        var back = vm.ToDef();
-        Assert.Equal("0x05", back.Fix["cmd"]);
-        Assert.Equal("id", back.PayloadFields[0].Name);
-    }
-
-    private static ProtocolDefinition DemoDef() =>
-        SerialForge.Core.Engine.ProtocolLoader.Load(File.ReadAllText("Fixtures/demo-mcu.json"));
 
     [Fact]
     public void Editor_populate_then_build_round_trips_key_fields()
     {
         var vm = new ProtocolEditorViewModel(DemoDef(), _ => { }, null!);
         Assert.Equal("demo-mcu", vm.Name);
-        Assert.Equal(5, vm.LayoutFields.Count);
+        Assert.Equal(5, vm.Segments.Count);
         Assert.Equal(2, vm.Commands.Count);
         var built = vm.Build();              // 不抛即合法
         Assert.Equal("demo-mcu", built.Name);
+        Assert.Equal(SegmentRole.Length, built.Frame.First(s => s.Name == "len").Role);
     }
 
     [Fact]
@@ -123,47 +64,22 @@ public class EditorViewModelsTest
     {
         ProtocolDefinition? applied = null;
         var vm = new ProtocolEditorViewModel(DemoDef(), d => applied = d, null!);
-        // 破坏：把 crc 的 to 指向不存在的字段
-        vm.LayoutFields.First(f => f.Compute.IsCrc).Compute.To = "no_such";
+        vm.Segments.First(s => s.Role == SegmentRole.Checksum).OverTo = "no_such";
         vm.Apply.Execute(null);
         Assert.Null(applied);
         Assert.False(string.IsNullOrEmpty(vm.ErrorMessage));
     }
 
     [Fact]
-    public void AddLayoutField_and_RemoveLayoutField_mutate_collection()
+    public void AddSegment_and_RemoveSegment_mutate_collection()
     {
         var vm = new ProtocolEditorViewModel(DemoDef(), _ => { }, null!);
-        int n = vm.LayoutFields.Count;
-        vm.AddLayoutField.Execute(null);
-        Assert.Equal(n + 1, vm.LayoutFields.Count);
-        var last = vm.LayoutFields[^1];
-        vm.RemoveLayoutField.Execute(last);
-        Assert.Equal(n, vm.LayoutFields.Count);
-    }
-
-    [Fact]
-    public void MoveLayoutFieldUp_swaps_with_previous()
-    {
-        var vm = new ProtocolEditorViewModel(DemoDef(), _ => { }, null!);
-        var first = vm.LayoutFields[0]; var second = vm.LayoutFields[1];
-        vm.MoveLayoutFieldUp.Execute(second);          // moves second up
-        Assert.Same(second, vm.LayoutFields[0]);
-        Assert.Same(first, vm.LayoutFields[1]);
-        vm.MoveLayoutFieldUp.Execute(first);           // first already at top -> no-op
-        Assert.Same(first, vm.LayoutFields[0]);
-    }
-
-    [Fact]
-    public void AddCommand_and_RemoveCommand_mutate_collection()
-    {
-        var vm = new ProtocolEditorViewModel(DemoDef(), _ => { }, null!);
-        int n = vm.Commands.Count;
-        vm.AddCommand.Execute(null);
-        Assert.Equal(n + 1, vm.Commands.Count);
-        var added = vm.Commands[^1];
-        vm.RemoveCommand.Execute(added);
-        Assert.Equal(n, vm.Commands.Count);
+        int n = vm.Segments.Count;
+        vm.AddSegment.Execute(null);
+        Assert.Equal(n + 1, vm.Segments.Count);
+        var last = vm.Segments[^1];
+        vm.RemoveSegment.Execute(last);
+        Assert.Equal(n, vm.Segments.Count);
     }
 
     [Fact]
@@ -172,148 +88,18 @@ public class EditorViewModelsTest
         var vm = new ProtocolEditorViewModel(DemoDef(), _ => { }, null!);
         vm.RefreshRaw.Execute(null);
         Assert.False(string.IsNullOrWhiteSpace(vm.RawJson));
-        ProtocolLoader.Load(vm.RawJson);   // round-trips
+        SegLoader.Load(vm.RawJson);   // round-trips
     }
 
     [Fact]
-    public void ApplyRaw_populates_from_json_and_surfaces_parse_errors()
+    public void Command_editor_preserves_payload_template_through_round_trip()
     {
-        var vm = new ProtocolEditorViewModel(DemoDef(), _ => { }, null!);
-        // valid JSON -> repopulates
-        vm.RawJson = File.ReadAllText("Fixtures/demo-mcu.json");
-        vm.ApplyRaw.Execute(null);
-        Assert.Equal("demo-mcu", vm.Name);
-        Assert.True(string.IsNullOrEmpty(vm.ErrorMessage));
-        // garbage -> error, draft unchanged
-        vm.RawJson = "{ not valid json";
-        string nameBefore = vm.Name;
-        vm.ApplyRaw.Execute(null);
-        Assert.Equal(nameBefore, vm.Name);
-        Assert.False(string.IsNullOrEmpty(vm.ErrorMessage));
-    }
-
-    [Fact]
-    public void BuildDraft_serializes_invalid_draft_without_throwing()
-    {
-        var vm = new ProtocolEditorViewModel(DemoDef(), _ => { }, null!);
-        vm.LayoutFields.First(f => f.Compute.IsCrc).Compute.To = "no_such"; // invalid
-        var ex = Record.Exception(() => ProtocolSaver.ToJson(vm.BuildDraft()));
-        Assert.Null(ex);   // BuildDraft does not validate; only Build() does
-    }
-
-    [Fact]
-    public void AddPayloadField_and_RemovePayloadField_mutate_collection()
-    {
-        var cmd = new CommandEditorViewModel();
-        int n = cmd.PayloadFields.Count;
-        cmd.AddPayloadField.Execute(null);
-        Assert.Equal(n + 1, cmd.PayloadFields.Count);
-        var last = cmd.PayloadFields[^1];
-        cmd.RemovePayloadField.Execute(last);
-        Assert.Equal(n, cmd.PayloadFields.Count);
-    }
-
-    [Fact]
-    public void AddFix_and_RemoveFix_mutate_collection()
-    {
-        var cmd = new CommandEditorViewModel();
-        int n = cmd.Fix.Count;
-        cmd.AddFix.Execute(null);
-        Assert.Equal(n + 1, cmd.Fix.Count);
-        var last = cmd.Fix[^1];
-        cmd.RemoveFix.Execute(last);
-        Assert.Equal(n, cmd.Fix.Count);
-    }
-
-    [Fact]
-    public void Layout_bitfield_round_trips_through_editor()
-    {
-        var src = new FieldDef("status", FieldKind.Value, CodecType.U8, null, null, null, null, null, null,
-            new[] { new BitFieldDef("type", 0, 4, null, "0x1"), new BitFieldDef("subtype", 4, 4, null, null) });
-        var vm = new LayoutFieldViewModel(src);
-        Assert.True(vm.IsBitField);
-        Assert.Equal(2, vm.Bits.Count);
-        var def = vm.ToFieldDef();
-        Assert.NotNull(def.Bits);
-        Assert.Equal(CodecType.U8, def.Codec);
-        Assert.Equal("0x1", def.Bits![0].Default);
-    }
-
-    [Fact]
-    public void Payload_bitfield_round_trips_through_editor()
-    {
-        var src = new PayloadFieldDef("flags", CodecType.U8, null, null, null,
-            new[] { new BitFieldDef("type", 0, 4, null, null) });
-        var vm = new PayloadFieldViewModel(src);
-        Assert.True(vm.IsBitField);
-        var def = vm.ToDef();
-        Assert.NotNull(def.Bits);
-        Assert.Equal(CodecType.U8, def.Codec);
-    }
-
-    private static FieldDef LengthBitField(params BitFieldDef[] bits) =>
-        new("len", FieldKind.Computed, CodecType.U8, null, null, null, null, null,
-            new ComputeSpec("length", new[] { "payload" }, 0, null, null, null), bits);
-
-    [Fact]
-    public void Length_bitfield_load_marks_isLength_child_and_enables_selector()
-    {
-        var src = LengthBitField(
-            new BitFieldDef("ver", 0, 4, null, "0x1", false),
-            new BitFieldDef("size", 4, 4, null, null, true));
-        var vm = new LayoutFieldViewModel(src);
-        Assert.True(vm.IsLengthField);
-        Assert.True(vm.Bits[0].CanSetIsLength);
-        Assert.True(vm.Bits[1].CanSetIsLength);
-        Assert.False(vm.Bits[0].IsLength);
-        Assert.True(vm.Bits[1].IsLength);
-    }
-
-    [Fact]
-    public void Length_bitfield_radio_clears_sibling_when_one_marked()
-    {
-        var src = LengthBitField(
-            new BitFieldDef("ver", 0, 4, null, "0x1", false),
-            new BitFieldDef("size", 4, 4, null, null, true));
-        var vm = new LayoutFieldViewModel(src);
-        vm.Bits[0].IsLength = true;            // mark the other child
-        Assert.True(vm.Bits[0].IsLength);
-        Assert.False(vm.Bits[1].IsLength);     // sibling cleared
-    }
-
-    [Fact]
-    public void Length_bitfield_build_auto_marks_one_when_none_marked()
-    {
-        var src = LengthBitField(
-            new BitFieldDef("ver", 0, 4, null, "0x1", false),
-            new BitFieldDef("size", 4, 4, null, null, false));   // no isLength child
-        var vm = new LayoutFieldViewModel(src);
-        var def = vm.ToFieldDef();
-        Assert.True(def.Bits![0].IsLength);    // first child auto-marked
-        Assert.False(def.Bits![1].IsLength);
-    }
-
-    [Fact]
-    public void Length_bitfield_build_keeps_first_when_two_marked()
-    {
-        // Hand-authored JSON could mark two; loading doesn't trigger radio (ctor
-        // field sets don't raise), so BuildBits must collapse to the first.
-        var src = LengthBitField(
-            new BitFieldDef("ver", 0, 4, null, "0x1", true),
-            new BitFieldDef("size", 4, 4, null, null, true));
-        var vm = new LayoutFieldViewModel(src);
-        var def = vm.ToFieldDef();
-        Assert.True(def.Bits![0].IsLength);
-        Assert.False(def.Bits![1].IsLength);
-    }
-
-    [Fact]
-    public void Non_length_field_bit_children_cannot_set_isLength()
-    {
-        var src = new FieldDef("status", FieldKind.Value, CodecType.U8, null, null, null, null, null, null,
-            new[] { new BitFieldDef("type", 0, 4, null, "0x1") });
-        var vm = new LayoutFieldViewModel(src);
-        Assert.False(vm.IsLengthField);
-        Assert.False(vm.Bits[0].CanSetIsLength);   // 长度勾选隐藏
+        var def = DemoDef();
+        var json = SegSaver.ToJson(def);
+        var again = SegLoader.Load(json);
+        // writeConfig carries its payload sub-template through save/load.
+        var write = again.Commands.First(c => c.Name == "writeConfig");
+        Assert.NotNull(write.Payload);
+        Assert.Equal(2, write.Payload!.Length);
     }
 }

@@ -87,8 +87,13 @@ public sealed class FrameEngine
                     WriteBytes(buf, offsets[i], variableContent!);
                     break;
                 case SegmentRole.Value:
-                    WriteInt(buf, offsets[i], widths[i], ResolveInt(seg, values), seg.ByteOrder);
+                {
+                    ulong v = ResolveInt(seg, values);
+                    if (widths[i] < 64 && v >> widths[i] != 0)
+                        throw new ProtocolException($"value for '{seg.Name}' overflows {widths[i]} bits");
+                    WriteInt(buf, offsets[i], widths[i], v, seg.ByteOrder);
                     break;
+                }
             }
         }
 

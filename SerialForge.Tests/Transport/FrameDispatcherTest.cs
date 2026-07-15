@@ -1,21 +1,33 @@
 using SerialForge.Core.Engine;
 using SerialForge.Core.Models;
+using SerialForge.Core.SegmentModel;
 using SerialForge.Transport;
+using SegLoader = SerialForge.Core.SegmentModel.ProtocolLoader;
 
 namespace SerialForge.Tests.Transport;
 
 public class FrameDispatcherTest
 {
     private static ProtocolDefinition Def() =>
-        ProtocolLoader.Load(File.ReadAllText("Fixtures/demo-mcu.json"));
+        SegLoader.Load(File.ReadAllText("Fixtures/demo-mcu.json"));
+
+    private static FrameEngine Engine(ProtocolDefinition def) => new(def.Frame, def.DefaultByteOrder);
+
+    private static byte[] Encode(ProtocolDefinition def, FrameEngine engine)
+    {
+        var cmd = def.Commands[0];
+        var values = new Dictionary<string, object>();
+        foreach (var kv in cmd.Values) values[kv.Key] = kv.Value;
+        return engine.Pack(values, cmd.Payload);
+    }
 
     [Fact]
     public void Dispatches_decoded_frame_and_await_resolves()
     {
         var def = Def();
-        var engine = new ProtocolEngine(def);
-        var dispatcher = new FrameDispatcher(engine, _ => _());
-        var frame = engine.Encode(new CommandInstance { Command = def.Commands[0] });
+        var engine = Engine(def);
+        var dispatcher = new FrameDispatcher(engine, def, _ => _());
+        var frame = Encode(def, engine);
 
         DecodedFrame? seen = null;
         dispatcher.FrameDecoded += (_, f) => seen = f;
@@ -30,15 +42,17 @@ public class FrameDispatcherTest
     [Fact]
     public async Task Await_times_out_when_no_matching_frame()
     {
-        var dispatcher = new FrameDispatcher(new ProtocolEngine(Def()), _ => _());
+        var def = Def();
+        var dispatcher = new FrameDispatcher(Engine(def), def, _ => _());
         await Assert.ThrowsAsync<TimeoutException>(() => dispatcher.Await(_ => false, 20, default));
-        Assert.Equal(0, dispatcher.WaiterCount);   // 死条已清扫
+        Assert.Equal(0, dispatcher.WaiterCount);
     }
 
     [Fact]
     public async Task Await_cancels_and_sweeps_waiter()
     {
-        var dispatcher = new FrameDispatcher(new ProtocolEngine(Def()), _ => _());
+        var def = Def();
+        var dispatcher = new FrameDispatcher(Engine(def), def, _ => _());
         using var cts = new CancellationTokenSource();
         var task = dispatcher.Await(_ => false, 5000, cts.Token);
         cts.Cancel();
@@ -49,7 +63,8 @@ public class FrameDispatcherTest
     [Fact]
     public void Tick_flushes_idle_partial_frame_after_timeout()
     {
-        var dispatcher = new FrameDispatcher(new ProtocolEngine(Def()), _ => _());
+        var def = Def();
+        var dispatcher = new FrameDispatcher(Engine(def), def, _ => _());
         DecodedFrame? seen = null;
         dispatcher.FrameDecoded += (_, f) => seen = f;
 
@@ -57,7 +72,6 @@ public class FrameDispatcherTest
         dispatcher.OnBytes(new byte[] { 0xAA, 0x55, 0x99 });
         Assert.Null(seen);
 
-        // After the protocol's frame timeout (50ms) elapses, Tick flushes the buffer.
         Thread.Sleep(70);
         dispatcher.Tick();
         Assert.NotNull(seen);
