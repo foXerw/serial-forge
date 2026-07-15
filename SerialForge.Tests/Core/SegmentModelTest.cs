@@ -138,4 +138,49 @@ public class SegmentModelTest
         var again = SegLoader.Load(SegSaver.ToJson(def));
         Assert.Equal(9, again.Frame.Length);
     }
+
+    private static readonly string PayloadTemplateJson = """
+    {
+      "name": "demo-cmd", "version": "2.0", "defaultByteOrder": "little",
+      "frame": [
+        { "name": "preamble", "role": "fixed", "width": 16, "value": ["0xAA","0x55"] },
+        { "name": "len", "role": "length", "width": 16, "byteOrder": "little", "counts": ["payload"] },
+        { "name": "cmd", "role": "value", "width": 8 },
+        { "name": "payload", "role": "value" },
+        { "name": "crc", "role": "checksum", "width": 16, "byteOrder": "little", "algo": "crc16",
+          "over": { "from": "preamble", "to": "payload" },
+          "params": { "poly":"0x1021","init":"0xFFFF","refIn":false,"refOut":false,"xorOut":"0x0000" } }
+      ],
+      "commands": [ {
+        "name": "write", "title": "Write", "values": { "cmd": "0x05" },
+        "payload": [
+          { "name": "seq", "role": "value", "width": 16, "byteOrder": "little" },
+          { "name": "val", "role": "value", "width": 8 }
+        ]
+      } ]
+    }
+    """;
+
+    [Fact]
+    public void Command_payload_template_is_packed_and_parsed()
+    {
+        var def = SegLoader.Load(PayloadTemplateJson);
+        var engine = new FrameEngine(def.Frame, def.DefaultByteOrder);
+        var cmd = def.Commands[0];
+        // Caller merges the command's preset Values with per-send field inputs.
+        var values = new Dictionary<string, object>();
+        foreach (var kv in cmd.Values) values[kv.Key] = kv.Value;   // cmd = "0x05"
+        values["seq"] = 0x0102;
+        values["val"] = 0x03;
+        var frame = engine.Pack(values, cmd.Payload);
+        // AA 55 | len(03 00) | cmd(05) | seq(02 01) val(03) | crc
+        Assert.Equal(0x03, frame[2]);
+        Assert.Equal(0x05, frame[4]);
+        Assert.Equal(new byte[] { 0x02, 0x01, 0x03 }, new[] { frame[5], frame[6], frame[7] });
+
+        var decoded = engine.Parse(frame, cmd.Payload);
+        Assert.Null(decoded.Error);
+        Assert.Equal(0x0102UL, decoded.Fields.First(f => f.Name == "payload.seq").Value);
+        Assert.Equal(0x03UL, decoded.Fields.First(f => f.Name == "payload.val").Value);
+    }
 }

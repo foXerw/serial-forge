@@ -45,12 +45,17 @@ public static class ProtocolSaver
         return d;
     }
 
-    private static object CommandDto(CommandDef c) => new
+    private static object CommandDto(CommandDef c)
     {
-        name = c.Name,
-        title = c.Title,
-        values = c.Values.Count == 0 ? null : c.Values
-    };
+        var d = new Dictionary<string, object?>
+        {
+            ["name"] = c.Name,
+            ["title"] = c.Title
+        };
+        if (c.Values.Count > 0) d["values"] = c.Values;
+        if (c.Payload is { Length: > 0 } p) d["payload"] = p.Select(SegmentDto).ToArray();
+        return d;
+    }
 
     private static Dictionary<string, JsonElement> CopyParams(Dictionary<string, JsonElement> p)
         => p.ToDictionary(kv => kv.Key, kv => kv.Value);

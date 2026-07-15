@@ -41,7 +41,8 @@ public static class ProtocolLoader
         s.Over?.From, s.Over?.To, s.Params);
 
     private static CommandDef ToCommand(Dto.CommandDto c) => new(
-        c.Name!, c.Title ?? c.Name!, c.Values ?? new());
+        c.Name!, c.Title ?? c.Name!, c.Values ?? new(),
+        c.Payload is { Length: > 0 } ps ? ps.Select(ToSegment).ToArray() : null);
 
     private static SegmentRole ParseRole(string s) => s.ToLowerInvariant() switch
     {
@@ -156,7 +157,7 @@ public static class ProtocolLoader
             public Dictionary<string, JsonElement>? Params;
         }
         public sealed class OverDto { public string? From; public string? To; }
-        public sealed class CommandDto { public string? Name; public string? Title; public Dictionary<string, string>? Values; }
+        public sealed class CommandDto { public string? Name; public string? Title; public Dictionary<string, string>? Values; public SegmentDto[]? Payload; }
     }
     #pragma warning restore CS0649
 }
